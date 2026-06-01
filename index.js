@@ -279,7 +279,7 @@ app.get(['/', '/pay'], (req, res) => {
     ` : ''}
 
     <a href="${upiLink}" class="pay-btn">
-      PAY NOW (₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+      PAY NOW ₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </a>
     
     <hr class="divider">
