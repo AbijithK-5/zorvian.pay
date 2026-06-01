@@ -249,7 +249,7 @@ app.get(['/', '/pay'], (req, res) => {
     </div>
     
     <h1 class="store-name">Sri Mutharamman Store</h1>
-    <div class="tagline">Quality Products • Best Prices • Happy Shopping</div>
+    <div class="tagline">Quality Products • Honest Prices</div>
     
     <p class="thank-you">Thank You for Shopping With Us.</p>
 
