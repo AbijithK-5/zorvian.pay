@@ -73,7 +73,7 @@ app.get(['/', '/pay'], (req, res) => {
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      min-height: -webkit-fill-available;
+      min-height: 100dvh;
       padding: 1.5rem 1rem;
       margin: 0;
       box-sizing: border-box;
@@ -243,11 +243,12 @@ app.get(['/', '/pay'], (req, res) => {
     @media (max-width: 480px) {
       body {
         padding: 0;
+        background-color: var(--card-bg);
       }
       .card {
         max-width: 100%;
         min-height: 100vh;
-        min-height: -webkit-fill-available;
+        min-height: 100dvh;
         border-radius: 0;
         border: none;
         display: flex;
@@ -278,7 +279,7 @@ app.get(['/', '/pay'], (req, res) => {
     ` : ''}
 
     <a href="${upiLink}" class="pay-btn">
-      PAY NOW - ₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      PAY NOW (₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
     </a>
     
     <hr class="divider">
@@ -291,7 +292,7 @@ app.get(['/', '/pay'], (req, res) => {
         <a href="https://zorvian-technologies.vercel.app" target="_blank" class="social-icon website" title="Website">
           <i class="fa-solid fa-globe"></i>
         </a>
-        <a href="https://instagram.com" target="_blank" class="social-icon instagram" title="Instagram">
+        <a href="https://www.instagram.com/zorvian_technologies?igsh=bWFycHZjZDRwbG5t" target="_blank" class="social-icon instagram" title="Instagram">
           <i class="fa-brands fa-instagram"></i>
         </a>
         <a href="https://wa.me/919943812771" target="_blank" class="social-icon whatsapp" title="WhatsApp">
