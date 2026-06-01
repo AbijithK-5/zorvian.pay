@@ -240,6 +240,21 @@ app.get(['/', '/pay'], (req, res) => {
     .social-icon.whatsapp {
       color: #25d366;
     }
+    @media (max-width: 480px) {
+      body {
+        padding: 0;
+      }
+      .card {
+        max-width: 100%;
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        border-radius: 0;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+    }
   </style>
 </head>
 <body>
@@ -252,40 +267,18 @@ app.get(['/', '/pay'], (req, res) => {
     <div class="tagline">Quality Products • Honest Prices</div>
     
     <p class="thank-you">Thank You for Shopping With Us.</p>
-
+    
     ${imageUrl ? `
-    <!-- Collapsible Bill Receipt Image -->
-    <div style="margin-bottom: 1.5rem; text-align: center;">
-      <button onclick="toggleBillReceipt()" style="background: rgba(250, 204, 21, 0.15); border: 1px solid rgba(250, 204, 21, 0.3); color: #facc15; padding: 10px 18px; border-radius: 14px; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(250, 204, 21, 0.08); width: 100%; justify-content: center; outline: none;">
-        <i class="fa-solid fa-receipt"></i> View Bill Receipt
-      </button>
-      <div id="bill-receipt-container" style="display: none; margin-top: 1rem; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); background: #ffffff; padding: 10px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);">
-        <img src="/uploads/${imageUrl}" alt="Bill Receipt" style="width: 100%; height: auto; max-height: 480px; object-fit: contain; border-radius: 12px; display: block; margin: 0 auto;" />
+    <!-- Scrollable Bill Receipt Image -->
+    <div style="margin-bottom: 2rem; width: 100%;">
+      <div style="border-radius: 16px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--border); background: #ffffff; padding: 10px; max-height: 380px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);">
+        <img src="/uploads/${imageUrl}" alt="Bill Receipt" style="width: 100%; height: auto; display: block; margin: 0 auto;" />
       </div>
     </div>
-    
-    <script>
-      function toggleBillReceipt() {
-        const container = document.getElementById('bill-receipt-container');
-        if (container.style.display === 'none') {
-          container.style.display = 'block';
-          setTimeout(() => {
-            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          }, 50);
-        } else {
-          container.style.display = 'none';
-        }
-      }
-    </script>
     ` : ''}
-    
-    <div class="amount-container">
-      <div class="amount-label">💰 Grand Total Amount</div>
-      <div class="amount-val">₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-    </div>
-    
+
     <a href="${upiLink}" class="pay-btn">
-      PAY NOW
+      PAY NOW - ₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </a>
     
     <hr class="divider">
