@@ -98,12 +98,12 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .logo {
-      width: 90px;
-      height: 90px;
+      width: 130px;
+      height: 130px;
       border-radius: 50%;
       object-fit: cover;
-      border: 3px solid var(--primary);
-      box-shadow: 0 0 20px rgba(250, 204, 21, 0.2);
+      border: 4px solid var(--primary);
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.25);
     }
 
     .store-name {
@@ -128,33 +128,22 @@ app.get(['/', '/pay'], (req, res) => {
     .thank-you {
       font-size: 0.95rem;
       color: var(--text-muted);
-      margin-bottom: 2rem;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
     }
 
-    .amount-container {
-      background: rgba(250, 204, 21, 0.08); /* Yellow background with low opacity */
-      border: 1px solid rgba(250, 204, 21, 0.2); /* Yellow border with low opacity */
-      border-radius: 16px;
-      padding: 1.25rem;
-      margin-bottom: 2rem;
-    }
-
-    .amount-label {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.25rem;
-    }
-
-    .amount-val {
-      font-size: 2rem;
-      font-weight: 900;
+    .grand-total {
+      font-size: 1.45rem;
+      font-weight: 800;
       color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .grand-total-amount {
+      color: var(--primary);
+      font-weight: 900;
+      margin-left: 0.35rem;
     }
 
     .pay-btn {
@@ -188,7 +177,7 @@ app.get(['/', '/pay'], (req, res) => {
     .divider {
       border: none;
       border-top: 1px dashed var(--border);
-      margin: 2.25rem 0 1.75rem 0;
+      margin: 1.5rem 0 1.75rem 0;
     }
 
     .footer {
@@ -267,8 +256,6 @@ app.get(['/', '/pay'], (req, res) => {
     <h1 class="store-name">Sri Mutharamman Store</h1>
     <div class="tagline">Quality Products • Honest Prices</div>
     
-    <p class="thank-you">Thank You for Shopping With Us.</p>
-    
     ${imageUrl ? `
     <!-- Scrollable Bill Receipt Image -->
     <div style="margin-bottom: 2rem; width: 100%;">
@@ -278,9 +265,15 @@ app.get(['/', '/pay'], (req, res) => {
     </div>
     ` : ''}
 
+    <div class="grand-total">
+      Grand Total:<span class="grand-total-amount">₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+    </div>
+
     <a href="${upiLink}" class="pay-btn">
-      PAY NOW ₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      PAY NOW
     </a>
+
+    <p class="thank-you">Thank You for Shopping With Us.</p>
     
     <hr class="divider">
     
