@@ -18,7 +18,7 @@ app.get(['/', '/pay'], (req, res) => {
         const note = req.query.tn || 'SRI MUTHARAMMAN STORE';
         
         // Build the UPI Deep link
-        const upiLink = `upi://pay?pa=paytmqr6ylc3j@ptys&pn=SRI%20MUTHARAMMAN%20STORE&am=${encodeURIComponent(amount)}&cu=INR&tn=${encodeURIComponent(note)}`;
+        const upiLink = `upi://pay?pa=paytmqr6ylc3j@ptys&pn=SRI%20MUTHARAMMAN%20STORE&am=${encodeURIComponent(amount)}&cu=INR`;
 
         // Check if there is a cached bill image in server/uploads
         let imageUrl = '';
