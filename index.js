@@ -119,41 +119,49 @@ app.get(['/', '/pay'], (req, res) => {
       border: 1px solid var(--card-border);
       border-radius: 28px;
       width: 100%;
-      padding: 2.25rem 2rem;
+      padding: 1.75rem 1.5rem;
       text-align: center;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(250, 204, 21, 0.02);
     }
 
-    /* Interactive Info Cards */
-    .info-card {
+    /* Consolidated Premium Info Card */
+    .store-info-card {
       background: var(--card-bg);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--card-border);
-      border-radius: 24px;
-      padding: 1.5rem 1.75rem;
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
-      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-      opacity: 0; /* Animated entry */
+      border-radius: 28px;
+      padding: 2.25rem 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(250, 204, 21, 0.02);
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+      width: 100%;
     }
 
-    .info-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(250, 204, 21, 0.2);
-      box-shadow: 0 15px 35px -8px rgba(0, 0, 0, 0.4), 0 0 20px rgba(250, 204, 21, 0.02);
+    .section-divider {
+      border: none;
+      border-top: 1px dashed rgba(255, 255, 255, 0.08);
+      margin: 0.25rem 0;
     }
 
-    .store-header {
+    /* Scroll reveal animations styling */
+    .reveal-on-scroll {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal-on-scroll.revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .store-header-section {
       display: flex;
       align-items: center;
       gap: 1.5rem;
-      background: var(--card-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--card-border);
-      border-radius: 24px;
-      padding: 1.5rem 1.75rem;
-      opacity: 0; /* Animated entry */
+      margin-bottom: 0.25rem;
     }
 
     .dashboard-logo {
@@ -225,6 +233,15 @@ app.get(['/', '/pay'], (req, res) => {
     .about-text strong {
       color: #ffffff;
       font-weight: 600;
+    }
+
+    .copyright-text {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 1rem;
+      opacity: 0.65;
+      font-weight: 500;
     }
 
     /* Hours widget */
@@ -487,20 +504,20 @@ app.get(['/', '/pay'], (req, res) => {
       letter-spacing: 0.01em;
     }
 
-    /* Checkout Card Styles */
+    /* Checkout Card Styles - Sizing Adjustments */
     .logo-container {
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem;
       display: flex;
       justify-content: center;
     }
 
     .logo {
-      width: 96px;
-      height: 96px;
+      width: 120px;
+      height: 120px;
       border-radius: 50%;
       object-fit: cover;
-      border: 3px solid var(--primary);
-      box-shadow: 0 0 20px rgba(250, 204, 21, 0.15);
+      border: 4px solid var(--primary);
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.2);
     }
 
     .store-name {
@@ -520,22 +537,22 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .thank-you {
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
-      margin-top: 1.25rem;
+      margin-top: 1rem;
       margin-bottom: 0.4rem;
       font-weight: 500;
     }
 
     .grand-total {
-      font-size: 1.25rem;
-      font-weight: 800;
+      font-size: 1.1rem;
+      font-weight: 700;
       color: #ffffff;
-      margin-bottom: 1.25rem;
-      letter-spacing: -0.02em;
-      background: rgba(255, 255, 255, 0.025);
-      padding: 0.7rem 1rem;
-      border-radius: 16px;
+      margin-bottom: 1rem;
+      letter-spacing: -0.01em;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 0.55rem 0.85rem;
+      border-radius: 14px;
       border: 1px solid rgba(255, 255, 255, 0.04);
       display: flex;
       justify-content: space-between;
@@ -545,7 +562,7 @@ app.get(['/', '/pay'], (req, res) => {
     .grand-total-amount {
       color: var(--primary);
       font-weight: 900;
-      font-size: 1.4rem;
+      font-size: 1.25rem;
     }
 
     .pay-btn {
@@ -556,21 +573,21 @@ app.get(['/', '/pay'], (req, res) => {
       background-color: var(--success);
       color: #ffffff; 
       text-decoration: none;
-      font-size: 1.1rem;
+      font-size: 1.02rem;
       font-weight: 800;
-      padding: 1rem;
-      border-radius: 18px;
+      padding: 0.85rem 1rem;
+      border-radius: 16px;
       border: none;
       cursor: pointer;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.25);
-      letter-spacing: 0.02em;
+      box-shadow: 0 6px 15px rgba(16, 185, 129, 0.25);
+      letter-spacing: 0.01em;
     }
 
     .pay-btn:hover {
       background-color: var(--success-hover);
       transform: translateY(-2px);
-      box-shadow: 0 12px 24px rgba(16, 185, 129, 0.35);
+      box-shadow: 0 8px 18px rgba(16, 185, 129, 0.35);
     }
 
     .pay-btn:active {
@@ -672,27 +689,6 @@ app.get(['/', '/pay'], (req, res) => {
       }
     }
 
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(12px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .fade-in {
-      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
-    .store-header.fade-in { animation-delay: 0.05s; }
-    .info-card:nth-child(2).fade-in { animation-delay: 0.1s; }
-    .info-card:nth-child(3).fade-in { animation-delay: 0.15s; }
-    .info-card:nth-child(4).fade-in { animation-delay: 0.2s; }
-    .info-card:nth-child(5).fade-in { animation-delay: 0.25s; }
-
     /* Responsive queries */
     @media (max-width: 899px) {
       body {
@@ -713,8 +709,12 @@ app.get(['/', '/pay'], (req, res) => {
         order: 2;
       }
 
-      .store-header {
+      .store-header-section {
         display: none; /* Already integrated in payment card */
+      }
+
+      .store-info-card {
+        padding: 1.75rem 1.25rem;
       }
 
       .license-grid {
@@ -725,7 +725,7 @@ app.get(['/', '/pay'], (req, res) => {
 
     @media (max-width: 480px) {
       .card {
-        padding: 1.75rem 1.25rem;
+        padding: 1.5rem 1.15rem;
         border-radius: 24px;
       }
       .contact-grid {
@@ -745,106 +745,120 @@ app.get(['/', '/pay'], (req, res) => {
     <!-- Store Info Dashboard (Left Panel / Bottom on Mobile) -->
     <div class="store-dashboard">
       
-      <!-- Store Header Card -->
-      <div class="store-header fade-in">
-        <img class="dashboard-logo" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
-        <div class="store-title-group">
-          <span class="est-badge">Est. 2019</span>
-          <h1 class="store-main-name">Sri Mutharamman Store</h1>
-          <div class="dashboard-tagline">Quality Products • Honest Prices</div>
-        </div>
-      </div>
-
-      <!-- About Section Card -->
-      <div class="info-card fade-in">
-        <h2 class="section-title"><i class="fa-solid fa-store icon-gold"></i> About Our Store</h2>
-        <p class="about-text">
-          Established in 2019, <strong>Sri Mutharamman Store</strong> is your trusted neighborhood grocery and department store, committed to providing quality products at fair and honest prices. We offer a wide range of groceries, daily essentials, beverages, rice varieties, household items, stationery products, and more to meet the everyday needs of our customers.
-        </p>
-        <p class="about-text" style="margin-top: 0.65rem;">
-          Our goal is to deliver excellent service, quality products, and a pleasant shopping experience for every customer. We are dedicated to maintaining high standards of hygiene, customer satisfaction, and value for money.
-        </p>
-      </div>
-
-      <!-- Store Hours Card -->
-      <div class="info-card fade-in">
-        <h2 class="section-title"><i class="fa-solid fa-clock icon-gold"></i> Store Hours</h2>
-        <div class="hours-container">
-          <div id="live-status-badge" class="status-badge closed">
-            <span id="live-status-dot" class="status-dot closed"></span>
-            <span id="live-status-text">Checking Store Hours...</span>
-          </div>
-          <div class="hours-grid">
-            <div class="hours-row">
-              <span class="days">Monday – Saturday</span>
-              <span class="time">6:00 AM – 10:00 PM</span>
-            </div>
-            <div class="hours-row">
-              <span class="days">Sunday</span>
-              <span class="time">6:00 AM – 9:00 PM</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Connect Card -->
-      <div class="info-card fade-in">
-        <h2 class="section-title"><i class="fa-solid fa-address-book icon-gold"></i> Quick Connect</h2>
-        <div class="contact-grid">
-          <a href="tel:9566598832" class="contact-btn phone">
-            <i class="fa-solid fa-phone"></i>
-            <span>Call Store</span>
-          </a>
-          <a href="https://wa.me/919566598832?text=Hi%20Sri%20Mutharamman%20Store%2C%20I%20have%20a%20query%20regarding%20my%20bill." target="_blank" class="contact-btn whatsapp">
-            <i class="fa-brands fa-whatsapp"></i>
-            <span>WhatsApp</span>
-          </a>
-          <a href="mailto:smssrimutharammanstore@gmail.com?subject=Inquiry%20regarding%20Sri%20Mutharamman%20Store" class="contact-btn email">
-            <i class="fa-solid fa-envelope"></i>
-            <span>Email Us</span>
-          </a>
-          <a href="https://www.google.com/maps/search/?api=1&query=No.+7%2F209%2C+Bannari+Amman+Nagar%2C+Karattumedu%2C+Coimbatore" target="_blank" class="contact-btn maps">
-            <i class="fa-solid fa-map-location-dot"></i>
-            <span>Directions</span>
-          </a>
-        </div>
+      <!-- Unified Store Info Card -->
+      <div class="store-info-card">
         
-        <div class="address-box" onclick="copyAddress(this)">
-          <div class="address-header">
-            <span class="address-title"><i class="fa-solid fa-location-dot"></i> Address</span>
-            <span class="copy-badge"><i class="fa-regular fa-copy"></i> Copy</span>
+        <!-- Store Header Section -->
+        <div class="store-header-section">
+          <img class="dashboard-logo" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
+          <div class="store-title-group">
+            <span class="est-badge">Est. 2019</span>
+            <h1 class="store-main-name">Sri Mutharamman Store</h1>
+            <div class="dashboard-tagline">Quality Products • Honest Prices</div>
           </div>
-          <p class="address-body">No. 7/209, Bannari Amman Nagar, Karattumedu, Coimbatore</p>
         </div>
-      </div>
 
-      <!-- Trust and Compliance Card -->
-      <div class="info-card fade-in">
-        <h2 class="section-title"><i class="fa-solid fa-shield-halved icon-gold"></i> Trust & Verification</h2>
-        <div class="license-grid">
-          <div class="license-badge" onclick="copyText('33GGSP55591A1ZY', 'GSTIN', this)">
-            <div class="license-header">
-              <span class="license-label">GSTIN</span>
-              <span class="copy-small"><i class="fa-regular fa-copy"></i></span>
+        <hr class="section-divider store-header-section">
+
+        <!-- About Section -->
+        <div class="info-section reveal-on-scroll">
+          <h2 class="section-title"><i class="fa-solid fa-store icon-gold"></i> About Our Store</h2>
+          <p class="about-text">
+            Established in 2019, <strong>Sri Mutharamman Store</strong> is your trusted neighborhood grocery and department store, committed to providing quality products at fair and honest prices. We offer a wide range of groceries, daily essentials, beverages, rice varieties, household items, stationery products, and more to meet the everyday needs of our customers.
+          </p>
+          <p class="about-text" style="margin-top: 0.65rem;">
+            Our goal is to deliver excellent service, quality products, and a pleasant shopping experience for every customer. We are dedicated to maintaining high standards of hygiene, customer satisfaction, and value for money.
+          </p>
+        </div>
+
+        <hr class="section-divider reveal-on-scroll">
+
+        <!-- Store Hours Section -->
+        <div class="info-section reveal-on-scroll">
+          <h2 class="section-title"><i class="fa-solid fa-clock icon-gold"></i> Store Hours</h2>
+          <div class="hours-container">
+            <div id="live-status-badge" class="status-badge closed">
+              <span id="live-status-dot" class="status-dot closed"></span>
+              <span id="live-status-text">Checking Store Hours...</span>
             </div>
-            <div class="license-value">33GGSP55591A1ZY</div>
+            <div class="hours-grid">
+              <div class="hours-row">
+                <span class="days">Monday – Saturday</span>
+                <span class="time">6:00 AM – 10:00 PM</span>
+              </div>
+              <div class="hours-row">
+                <span class="days">Sunday</span>
+                <span class="time">6:00 AM – 9:00 PM</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="section-divider reveal-on-scroll">
+
+        <!-- Trust and Compliance Section -->
+        <div class="info-section reveal-on-scroll">
+          <h2 class="section-title"><i class="fa-solid fa-shield-halved icon-gold"></i> Trust & Verification</h2>
+          <div class="license-grid">
+            <div class="license-badge" onclick="copyText('33GGSP55591A1ZY', 'GSTIN', this)">
+              <div class="license-header">
+                <span class="license-label">GSTIN</span>
+                <span class="copy-small"><i class="fa-regular fa-copy"></i></span>
+              </div>
+              <div class="license-value">33GGSP55591A1ZY</div>
+            </div>
+            
+            <div class="license-badge" onclick="copyText('22426015000178', 'FSSAI License', this)">
+              <div class="license-header">
+                <span class="license-label">FSSAI License No</span>
+                <span class="copy-small"><i class="fa-regular fa-copy"></i></span>
+              </div>
+              <div class="license-value">22426015000178</div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="section-divider reveal-on-scroll">
+
+        <!-- Quick Connect Section (Placed at the bottom of the card) -->
+        <div class="info-section reveal-on-scroll">
+          <h2 class="section-title"><i class="fa-solid fa-address-book icon-gold"></i> Quick Connect</h2>
+          <div class="contact-grid">
+            <a href="tel:9566598832" class="contact-btn phone">
+              <i class="fa-solid fa-phone"></i>
+              <span>Call Store</span>
+            </a>
+            <a href="https://wa.me/919566598832?text=Hi%20Sri%20Mutharamman%20Store%2C%20I%20have%20a%20query%20regarding%20my%20bill." target="_blank" class="contact-btn whatsapp">
+              <i class="fa-brands fa-whatsapp"></i>
+              <span>WhatsApp</span>
+            </a>
+            <a href="mailto:smssrimutharammanstore@gmail.com?subject=Inquiry%20regarding%20Sri%20Mutharamman%20Store" class="contact-btn email">
+              <i class="fa-solid fa-envelope"></i>
+              <span>Email Us</span>
+            </a>
+            <a href="https://www.google.com/maps/search/?api=1&query=No.+7%2F209%2C+Bannari+Amman+Nagar%2C+Karattumedu%2C+Coimbatore" target="_blank" class="contact-btn maps">
+              <i class="fa-solid fa-map-location-dot"></i>
+              <span>Directions</span>
+            </a>
           </div>
           
-          <div class="license-badge" onclick="copyText('22426015000178', 'FSSAI License', this)">
-            <div class="license-header">
-              <span class="license-label">FSSAI License No</span>
-              <span class="copy-small"><i class="fa-regular fa-copy"></i></span>
+          <div class="address-box" onclick="copyAddress(this)">
+            <div class="address-header">
+              <span class="address-title"><i class="fa-solid fa-location-dot"></i> Address</span>
+              <span class="copy-badge"><i class="fa-regular fa-copy"></i> Copy</span>
             </div>
-            <div class="license-value">22426015000178</div>
+            <p class="address-body">No. 7/209, Bannari Amman Nagar, Karattumedu, Coimbatore</p>
           </div>
+
+          <div class="copyright-text">© 2026 SMS. All rights reserved.</div>
         </div>
+        
       </div>
-      
     </div>
 
     <!-- Payment & Checkout Panel (Right Panel / Top on Mobile) -->
     <div class="checkout-container">
-      <div class="card">
+      <div class="card reveal-on-scroll">
         <div class="logo-container">
           <img class="logo" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
         </div>
@@ -984,6 +998,36 @@ app.get(['/', '/pay'], (req, res) => {
         showToast("Failed to copy " + label + ".");
       });
     }
+
+    // Intersection Observer for scroll reveal animations
+    document.addEventListener('DOMContentLoaded', function() {
+      const revealElements = document.querySelectorAll('.reveal-on-scroll');
+      
+      const observerOptions = {
+        root: null,
+        rootMargin: '0px 0px -40px 0px',
+        threshold: 0.05
+      };
+      
+      const observer = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, observerOptions);
+      
+      revealElements.forEach(el => {
+        observer.observe(el);
+      });
+      
+      // Also reveal initial top elements directly
+      setTimeout(() => {
+        const firstCard = document.querySelector('.store-info-card');
+        if (firstCard) firstCard.classList.add('revealed');
+      }, 100);
+    });
 
     // Initial load and run
     updateLiveStatus();
