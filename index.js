@@ -68,6 +68,7 @@ app.get(['/', '/pay'], (req, res) => {
 
         const amount = req.query.am || '0.00';
         const note = req.query.tn || 'SRI MUTHARAMMAN STORE';
+        const billDataParam = req.query.bd || '';
         
         // Build the UPI Deep link
         const upiLink = `upi://pay?pa=paytmqr6ylc3j@ptys&pn=SRI%20MUTHARAMMAN%20STORE&am=${encodeURIComponent(amount)}&cu=INR`;
@@ -127,6 +128,11 @@ app.get(['/', '/pay'], (req, res) => {
           if (!imageUrl) {
             imageUrl = billFile;
           }
+        }
+
+        // 5. If billDataParam is provided, guarantee button is shown even if billNo parsing failed
+        if (billDataParam && !imageUrl) {
+          imageUrl = 'text-receipt.png';
         }
         
         // HTML Code
@@ -1282,6 +1288,7 @@ app.get(['/', '/pay'], (req, res) => {
       <button class="modal-close" onclick="closeBillModal()">&times;</button>
       <h3 class="modal-title"><i class="fa-solid fa-receipt"></i> Bill Receipt</h3>
       <div class="modal-body">
+        <div id="modal-text-receipt" style="display: none; padding: 0.25rem 0;"></div>
         <div id="modal-loading" style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
           <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary); margin-bottom: 1rem; display: block;"></i>
           <span>Fetching receipt image...</span>
@@ -1300,6 +1307,8 @@ app.get(['/', '/pay'], (req, res) => {
   <div id="toast" class="toast">Address copied!</div>
 
   <script>
+    const encodedBillData = '${billDataParam}';
+
     // Live store open/closed status indicator logic based on IST (UTC+5.5)
     function updateLiveStatus() {
       const statusBadge = document.getElementById('live-status-badge');
@@ -1450,20 +1459,144 @@ app.get(['/', '/pay'], (req, res) => {
       }
     }
 
+    // Base64 decoder and text-receipt rendering logic
+    let parsedBillData = null;
+    if (typeof encodedBillData !== 'undefined' && encodedBillData) {
+      try {
+        parsedBillData = JSON.parse(decodeURIComponent(escape(window.atob(encodedBillData))));
+        console.log('[Pay Page] Decoded bill data:', parsedBillData);
+      } catch (e) {
+        console.error('[Pay Page] Failed to decode bill data:', e);
+      }
+    }
+
+    function renderTextReceipt(data) {
+      var itemsHtml = '';
+      if (data.i && data.i.length > 0) {
+        for (var i = 0; i < data.i.length; i++) {
+          var item = data.i[i];
+          itemsHtml += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; font-weight: 500; color: #000;">' +
+            '<div style="flex: 2.0; text-align: left; padding-right: 4px; word-break: break-word;">' + item.n + '</div>' +
+            '<div style="flex: 0.6; text-align: right; padding-right: 8px;">' + Number(item.r).toFixed(2) + '</div>' +
+            '<div style="flex: 0.8; text-align: right; padding-right: 8px;">' + item.q + '</div>' +
+            '<div style="flex: 1; text-align: right;">' + Number(item.a).toFixed(2) + '</div>' +
+            '</div>';
+        }
+      }
+
+      var totalSection = '';
+      if (data.isStock) {
+        totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+          '<span>Cart Total</span>' +
+          '<span>' + Number(data.s).toFixed(2) + '</span>' +
+          '</div>';
+        if (data.bal) {
+          totalSection += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+            '<span>Previous Balance</span>' +
+            '<span>' + Number(data.bal).toFixed(2) + '</span>' +
+            '</div>';
+        }
+        totalSection += '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
+          '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
+          '<span>GRAND TOTAL</span>' +
+          '<span>\u20B9 ' + Number(data.gt).toFixed(2) + '</span>' +
+          '</div>';
+      } else {
+        totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+          '<span>Subtotal (Excl. GST)</span>' +
+          '<span>' + Number(data.s).toFixed(2) + '</span>' +
+          '</div>' +
+          '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+          '<span>CGST (2.5%)</span>' +
+          '<span>' + Number(data.cg).toFixed(2) + '</span>' +
+          '</div>' +
+          '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+          '<span>SGST (2.5%)</span>' +
+          '<span>' + Number(data.sg).toFixed(2) + '</span>' +
+          '</div>';
+        if (data.di) {
+          totalSection += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+            '<span>Discount</span>' +
+            '<span>-' + Number(data.di).toFixed(2) + '</span>' +
+            '</div>';
+        }
+        totalSection += '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
+          '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
+          '<span>GRAND TOTAL</span>' +
+          '<span>\u20B9 ' + Number(data.gt).toFixed(2) + '</span>' +
+          '</div>';
+      }
+
+      var customerMob = data.m || '-';
+
+      return '<div style="font-family: \'Arial\', sans-serif; color: #000; background: #fff; padding: 14px; border-radius: 12px; line-height: 1.4; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1;">' +
+        '<div style="text-align: center; margin-bottom: 8px;">' +
+        '<div style="font-family: \'Times New Roman\', serif; font-size: 24px; font-weight: 900; margin-bottom: 2px; color: #000;">SMS</div>' +
+        '<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #000;">SRI MUTHARAMMAN STORE</div>' +
+        '<div style="font-size: 9px; color: #334155; line-height: 1.3; margin-top: 2px;">' +
+        'No. 7/209, Bannari Amman Nagar,<br/>' +
+        'Karattumedu, Coimbatore<br/>' +
+        'Contact: 9566598832 | GSTIN: 33GGSP55591A1ZY' +
+        '</div>' +
+        '</div>' +
+        '<table style="width: 100%; border-collapse: collapse; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 6px 0; font-size: 10px; color: #000;">' +
+        '<tr>' +
+        '<td style="padding: 3px 0; text-align: left;">Date: ' + data.d + '</td>' +
+        '<td style="padding: 3px 0; text-align: right;">Time: ' + data.t + '</td>' +
+        '</tr>' +
+        '<tr>' +
+        '<td style="padding: 3px 0; text-align: left;">Bill No: ' + data.b + '</td>' +
+        '<td style="padding: 3px 0; text-align: right;">Pay: ' + data.p + '</td>' +
+        '</tr>' +
+        '<tr>' +
+        '<td style="padding: 3px 0; text-align: left;">Name: ' + data.c + '</td>' +
+        '<td style="padding: 3px 0; text-align: right;">Mob: ' + customerMob + '</td>' +
+        '</tr>' +
+        '</table>' +
+        '<div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #000;">' +
+        '<div style="flex: 2.0; text-align: left;">Items</div>' +
+        '<div style="flex: 0.6; text-align: right; padding-right: 8px;">Rate</div>' +
+        '<div style="flex: 0.8; text-align: right; padding-right: 8px;">Qty</div>' +
+        '<div style="flex: 1; text-align: right;">Amt</div>' +
+        '</div>' +
+        '<div style="border-top: 1px dashed #000; margin-bottom: 6px;"></div>' +
+        '<div style="max-height: 250px; overflow-y: auto; padding-right: 2px;">' + itemsHtml + '</div>' +
+        '<div style="border-top: 1px dashed #000; margin: 6px 0;"></div>' +
+        totalSection +
+        '<div style="border-top: 1px dashed #000; margin: 6px 0;"></div>' +
+        '<div style="text-align: center; margin-top: 8px;">' +
+        '<div style="font-weight: bold; font-size: 10px; text-transform: uppercase; color: #000;">THANK YOU! VISIT AGAIN</div>' +
+        '<div style="font-size: 8px; color: #475569; margin-top: 2px;">Goods once sold will not be taken back</div>' +
+        '</div>' +
+        '</div>';
+    }
+
     // Modal actions
     function openBillModal(src) {
       const modal = document.getElementById('bill-modal');
+      const textContainer = document.getElementById('modal-text-receipt');
       const img = document.getElementById('modal-bill-img');
       const loading = document.getElementById('modal-loading');
       const errorDiv = document.getElementById('modal-error');
       
-      if (modal && img) {
-        // Reset state
-        img.style.display = 'none';
-        if (loading) loading.style.display = 'block';
-        if (errorDiv) errorDiv.style.display = 'none';
-        
-        img.src = src;
+      if (modal) {
+        if (parsedBillData) {
+          // If we have parsed text data, render the text receipt directly
+          if (textContainer) {
+            textContainer.innerHTML = renderTextReceipt(parsedBillData);
+            textContainer.style.display = 'block';
+          }
+          if (img) img.style.display = 'none';
+          if (loading) loading.style.display = 'none';
+          if (errorDiv) errorDiv.style.display = 'none';
+        } else {
+          // Fallback to loading image
+          if (textContainer) textContainer.style.display = 'none';
+          if (img) img.style.display = 'none';
+          if (loading) loading.style.display = 'block';
+          if (errorDiv) errorDiv.style.display = 'none';
+          if (img) img.src = src;
+        }
         modal.classList.add('show');
       }
     }
