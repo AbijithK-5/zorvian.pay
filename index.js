@@ -537,11 +537,16 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .thank-you {
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
       margin-top: 1rem;
       margin-bottom: 0.4rem;
       font-weight: 500;
+      line-height: 1.35;
+      max-width: 90%;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
     }
 
     .grand-total {
@@ -557,6 +562,9 @@ app.get(['/', '/pay'], (req, res) => {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      width: 70%;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .grand-total-amount {
@@ -569,7 +577,9 @@ app.get(['/', '/pay'], (req, res) => {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 100%;
+      width: 70%;
+      margin-left: auto;
+      margin-right: auto;
       background-color: var(--success);
       color: #ffffff; 
       text-decoration: none;
@@ -674,6 +684,113 @@ app.get(['/', '/pay'], (req, res) => {
       opacity: 1;
     }
 
+    /* Interactive Emoji Rating Widget */
+    .rating-widget {
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 1.15rem 1rem;
+      margin-top: 1rem;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .rating-widget:hover {
+      background: rgba(255, 255, 255, 0.025);
+      border-color: rgba(250, 204, 21, 0.15);
+    }
+
+    .rating-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.01em;
+    }
+
+    .emoji-container {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .emoji-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      padding: 0.25rem;
+      border-radius: 12px;
+      width: 19%;
+    }
+
+    .emoji-icon {
+      font-size: 1.55rem;
+      transition: transform 0.25s ease;
+      filter: grayscale(0.15);
+    }
+
+    .emoji-label {
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      opacity: 0.8;
+      transition: color 0.2s;
+    }
+
+    .emoji-btn:hover {
+      transform: scale(1.18);
+    }
+
+    .emoji-btn:hover .emoji-icon {
+      filter: grayscale(0) drop-shadow(0 0 6px rgba(250, 204, 21, 0.35));
+      transform: translateY(-2px);
+    }
+
+    .emoji-btn:hover .emoji-label {
+      color: var(--primary);
+    }
+
+    .emoji-btn.selected {
+      transform: scale(1.12);
+    }
+
+    .emoji-btn.selected .emoji-icon {
+      filter: grayscale(0) drop-shadow(0 0 8px rgba(16, 185, 129, 0.35));
+    }
+
+    .emoji-btn.selected .emoji-label {
+      color: var(--success);
+    }
+
+    .emoji-btn.dimmed {
+      opacity: 0.35;
+      transform: scale(0.9);
+      filter: grayscale(0.8);
+    }
+
+    .rating-feedback {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--success);
+      margin-top: 0rem;
+      height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: all 0.25s ease;
+    }
+
+    .rating-feedback.show {
+      height: auto;
+      opacity: 1;
+      margin-top: 0.65rem;
+    }
+
     @keyframes pulse {
       0% {
         transform: scale(0.95);
@@ -720,6 +837,17 @@ app.get(['/', '/pay'], (req, res) => {
       .license-grid {
         grid-template-columns: 1fr;
         gap: 0.75rem;
+      }
+
+      .thank-you {
+        font-size: 0.7rem;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
       }
     }
 
@@ -836,7 +964,7 @@ app.get(['/', '/pay'], (req, res) => {
               <i class="fa-solid fa-envelope"></i>
               <span>Email Us</span>
             </a>
-            <a href="https://www.google.com/maps/search/?api=1&query=No.+7%2F209%2C+Bannari+Amman+Nagar%2C+Karattumedu%2C+Coimbatore" target="_blank" class="contact-btn maps">
+            <a href="https://maps.app.goo.gl/fFJf6G6zeBaurqRu8" target="_blank" class="contact-btn maps">
               <i class="fa-solid fa-map-location-dot"></i>
               <span>Directions</span>
             </a>
@@ -848,6 +976,34 @@ app.get(['/', '/pay'], (req, res) => {
               <span class="copy-badge"><i class="fa-regular fa-copy"></i> Copy</span>
             </div>
             <p class="address-body">No. 7/209, Bannari Amman Nagar, Karattumedu, Coimbatore</p>
+          </div>
+
+          <!-- Interactive Emoji Rating Widget -->
+          <div class="rating-widget">
+            <h3 class="rating-title">How was your shopping experience?</h3>
+            <div class="emoji-container" id="emoji-rating-container">
+              <button class="emoji-btn" onclick="submitRating(1, '😡')" title="Poor">
+                <span class="emoji-icon">😡</span>
+                <span class="emoji-label">Poor</span>
+              </button>
+              <button class="emoji-btn" onclick="submitRating(2, '🙁')" title="Fair">
+                <span class="emoji-icon">🙁</span>
+                <span class="emoji-label">Fair</span>
+              </button>
+              <button class="emoji-btn" onclick="submitRating(3, '😐')" title="Good">
+                <span class="emoji-icon">😐</span>
+                <span class="emoji-label">Good</span>
+              </button>
+              <button class="emoji-btn" onclick="submitRating(4, '😊')" title="Very Good">
+                <span class="emoji-icon">😊</span>
+                <span class="emoji-label">Very Good</span>
+              </button>
+              <button class="emoji-btn" onclick="submitRating(5, '😍')" title="Excellent">
+                <span class="emoji-icon">😍</span>
+                <span class="emoji-label">Excellent</span>
+              </button>
+            </div>
+            <div id="rating-feedback" class="rating-feedback"></div>
           </div>
 
           <div class="copyright-text">© 2026 SMS. All rights reserved.</div>
@@ -999,6 +1155,70 @@ app.get(['/', '/pay'], (req, res) => {
       });
     }
 
+    // Interactive emoji rating widget handler
+    function submitRating(score, emoji) {
+      const container = document.getElementById('emoji-rating-container');
+      const feedback = document.getElementById('rating-feedback');
+      
+      if (!container || !feedback) return;
+      
+      const buttons = container.querySelectorAll('.emoji-btn');
+      
+      // Store rating in localStorage
+      localStorage.setItem('sms_store_rating', JSON.stringify({ score, emoji }));
+      
+      buttons.forEach((btn, index) => {
+        if (index + 1 === score) {
+          btn.className = 'emoji-btn selected';
+        } else {
+          btn.className = 'emoji-btn dimmed';
+        }
+      });
+      
+      let thankYouMsg = "Thank you! We appreciate your feedback.";
+      if (score === 5) thankYouMsg = "We're thrilled you loved your experience! 😍 Thank you!";
+      else if (score === 4) thankYouMsg = "Thank you for the wonderful rating! 😊";
+      else if (score === 3) thankYouMsg = "Thank you! We're glad you had a good experience. 🙂";
+      else thankYouMsg = "Thank you for your honest feedback. We will work to improve! 🙏";
+      
+      feedback.innerText = thankYouMsg;
+      feedback.className = 'rating-feedback show';
+      
+      showToast("Feedback recorded!");
+    }
+
+    function checkPreviousRating() {
+      const saved = localStorage.getItem('sms_store_rating');
+      if (saved) {
+        try {
+          const { score, emoji } = JSON.parse(saved);
+          const container = document.getElementById('emoji-rating-container');
+          const feedback = document.getElementById('rating-feedback');
+          if (container && feedback) {
+            const buttons = container.querySelectorAll('.emoji-btn');
+            buttons.forEach((btn, index) => {
+              if (index + 1 === score) {
+                btn.className = 'emoji-btn selected';
+              } else {
+                btn.className = 'emoji-btn dimmed';
+              }
+            });
+            
+            let thankYouMsg = "Thank you! We appreciate your feedback.";
+            if (score === 5) thankYouMsg = "We're thrilled you loved your experience! 😍 Thank you!";
+            else if (score === 4) thankYouMsg = "Thank you for the wonderful rating! 😊";
+            else if (score === 3) thankYouMsg = "Thank you! We're glad you had a good experience. 🙂";
+            else thankYouMsg = "Thank you for your honest feedback. We will work to improve! 🙏";
+            
+            feedback.innerText = thankYouMsg;
+            feedback.className = 'rating-feedback show';
+          }
+        } catch (e) {
+          // Ignore
+        }
+      }
+    }
+
     // Intersection Observer for scroll reveal animations
     document.addEventListener('DOMContentLoaded', function() {
       const revealElements = document.querySelectorAll('.reveal-on-scroll');
@@ -1013,7 +1233,8 @@ app.get(['/', '/pay'], (req, res) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
             entry.target.classList.add('revealed');
-            observer.unobserve(entry.target);
+          } else {
+            entry.target.classList.remove('revealed');
           }
         });
       }, observerOptions);
@@ -1027,6 +1248,9 @@ app.get(['/', '/pay'], (req, res) => {
         const firstCard = document.querySelector('.store-info-card');
         if (firstCard) firstCard.classList.add('revealed');
       }, 100);
+
+      // Check for previously submitted customer ratings
+      checkPreviousRating();
     });
 
     // Initial load and run
