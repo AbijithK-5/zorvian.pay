@@ -5,8 +5,47 @@ const fs = require('fs');
 const app = express();
 const options = {};
 
+// Add body parsers for high-capacity uploads (base64 image strings)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Cache Map for uploaded bill images (in-memory)
+const billImagesCache = new Map();
+
+// Serve temp-uploads for Vercel /tmp directory caching
+app.use('/tmp-uploads', express.static('/tmp'));
+
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Fallback to billing_software uploads if it exists locally
+const localBillingUploads = 'D:\\zorvian_projects\\billing_software\\server\\uploads';
+if (fs.existsSync(localBillingUploads)) {
+  app.use('/uploads', express.static(localBillingUploads));
+}
+
+// REST endpoint to receive bill images from the billing software
+app.post('/api/upload-bill', (req, res) => {
+  const { billNo, imageBase64, isStock } = req.body;
+  if (!billNo || !imageBase64) {
+    return res.status(400).json({ ok: false, error: 'Missing billNo or imageBase64' });
+  }
+
+  const key = `${isStock ? 'stock' : 'bill'}-${billNo}`;
+  billImagesCache.set(key, imageBase64);
+
+  // Fallback to write in /tmp directory (shared on warm Vercel lambdas)
+  try {
+    const base64Data = imageBase64.replace(/^data:image\/png;base64,/, "");
+    const filename = `${isStock ? 'stock-cart' : 'bill'}-${billNo}.png`;
+    fs.writeFileSync(path.join('/tmp', filename), base64Data, 'base64');
+    console.log(`[Server] Cached image to /tmp/${filename}`);
+  } catch (err) {
+    console.warn('[Server] Failed to write to /tmp:', err.message);
+  }
+
+  return res.json({ ok: true, message: 'Image uploaded and cached successfully' });
+});
 
 app.get(['/', '/pay'], (req, res) => {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -20,21 +59,60 @@ app.get(['/', '/pay'], (req, res) => {
         // Build the UPI Deep link
         const upiLink = `upi://pay?pa=paytmqr6ylc3j@ptys&pn=SRI%20MUTHARAMMAN%20STORE&am=${encodeURIComponent(amount)}&cu=INR`;
 
-        // Check if there is a cached bill image in server/uploads
+        // Check if there is a cached bill image
         let imageUrl = '';
+        let billNo = '';
+        
         if (note.startsWith('Bill-')) {
-          const billNo = note.slice(5).trim();
-          const uploadsDir = options.userDataPath 
-            ? path.join(options.userDataPath, 'uploads')
-            : path.join(__dirname, 'uploads');
-          
+          billNo = note.slice(5).trim();
+        } else if (note.startsWith('Bill No:')) {
+          billNo = note.slice(8).split('|')[0].trim();
+        } else {
+          const match = note.match(/Bill\s*(?:No:?)?\s*(\d+)/i);
+          if (match) {
+            billNo = match[1];
+          }
+        }
+        
+        if (billNo) {
+          const billKey = `bill-${billNo}`;
+          const stockKey = `stock-${billNo}`;
           const billFile = `bill-${billNo}.png`;
           const stockFile = `stock-cart-${billNo}.png`;
           
-          if (fs.existsSync(path.join(uploadsDir, billFile))) {
+          // 1. Check in-memory cache first (most reliable on Vercel)
+          if (billImagesCache.has(billKey)) {
+            imageUrl = billImagesCache.get(billKey);
+          } else if (billImagesCache.has(stockKey)) {
+            imageUrl = billImagesCache.get(stockKey);
+          } 
+          // 2. Check /tmp filesystem
+          else if (fs.existsSync(path.join('/tmp', billFile))) {
+            imageUrl = `/tmp-uploads/${billFile}`;
+          } else if (fs.existsSync(path.join('/tmp', stockFile))) {
+            imageUrl = `/tmp-uploads/${stockFile}`;
+          } 
+          // 3. Fallback to standard local paths (for local development)
+          else {
+            const uploadsDir = options.userDataPath 
+              ? path.join(options.userDataPath, 'uploads')
+              : path.join(__dirname, 'uploads');
+            const billingDir = 'D:\\zorvian_projects\\billing_software\\server\\uploads';
+            
+            if (fs.existsSync(path.join(uploadsDir, billFile))) {
+              imageUrl = billFile;
+            } else if (fs.existsSync(path.join(uploadsDir, stockFile))) {
+              imageUrl = stockFile;
+            } else if (fs.existsSync(path.join(billingDir, billFile))) {
+              imageUrl = billFile;
+            } else if (fs.existsSync(path.join(billingDir, stockFile))) {
+              imageUrl = stockFile;
+            }
+          }
+
+          // 4. Ultimate fallback: if there is a billNo, always populate imageUrl so the View Bill button is guaranteed to display
+          if (!imageUrl) {
             imageUrl = billFile;
-          } else if (fs.existsSync(path.join(uploadsDir, stockFile))) {
-            imageUrl = stockFile;
           }
         }
         
@@ -806,6 +884,128 @@ app.get(['/', '/pay'], (req, res) => {
       }
     }
 
+    /* View Bill Button */
+    .view-bill-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 70%;
+      margin: 0 auto 1.25rem auto;
+      background-color: rgba(250, 204, 21, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(250, 204, 21, 0.25);
+      font-size: 0.95rem;
+      font-weight: 800;
+      padding: 0.75rem 1rem;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      letter-spacing: 0.02em;
+    }
+
+    .view-bill-btn:hover {
+      background-color: rgba(250, 204, 21, 0.18);
+      border-color: rgba(250, 204, 21, 0.4);
+      transform: translateY(-1px);
+    }
+
+    /* Premium Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 1rem;
+    }
+
+    .modal-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 440px;
+      padding: 1.5rem;
+      position: relative;
+      transform: translateY(30px);
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+    }
+
+    .modal-overlay.show .modal-content {
+      transform: translateY(0);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1.25rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .modal-close:hover {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .modal-body {
+      overflow-y: auto;
+      overflow-x: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      padding: 0.75rem;
+      max-height: 60vh;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .modal-body img {
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+
     /* Responsive queries */
     @media (max-width: 899px) {
       body {
@@ -982,16 +1182,16 @@ app.get(['/', '/pay'], (req, res) => {
           <div class="rating-widget">
             <h3 class="rating-title">How was your shopping experience?</h3>
             <div class="emoji-container" id="emoji-rating-container">
-              <button class="emoji-btn" onclick="submitRating(1, '😡')" title="Poor">
-                <span class="emoji-icon">😡</span>
+              <button class="emoji-btn" onclick="submitRating(1, '🥺')" title="Poor">
+                <span class="emoji-icon">🥺</span>
                 <span class="emoji-label">Poor</span>
               </button>
               <button class="emoji-btn" onclick="submitRating(2, '🙁')" title="Fair">
                 <span class="emoji-icon">🙁</span>
                 <span class="emoji-label">Fair</span>
               </button>
-              <button class="emoji-btn" onclick="submitRating(3, '😐')" title="Good">
-                <span class="emoji-icon">😐</span>
+              <button class="emoji-btn" onclick="submitRating(3, '🙂')" title="Good">
+                <span class="emoji-icon">🙂</span>
                 <span class="emoji-label">Good</span>
               </button>
               <button class="emoji-btn" onclick="submitRating(4, '😊')" title="Very Good">
@@ -1023,12 +1223,10 @@ app.get(['/', '/pay'], (req, res) => {
         <div class="tagline">Quality Products • Honest Prices</div>
         
         ${imageUrl ? `
-        <!-- Scrollable Bill Receipt Image -->
-        <div style="margin-bottom: 1.5rem; width: 100%;">
-          <div style="border-radius: 16px; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--border); background: #ffffff; padding: 10px; max-height: 380px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.05);">
-            <img src="/uploads/${imageUrl}" alt="Bill Receipt" style="width: 100%; height: auto; display: block; margin: 0 auto;" />
-          </div>
-        </div>
+        <!-- View Bill Receipt Button -->
+        <button id="view-bill-btn" class="view-bill-btn">
+          <i class="fa-solid fa-receipt"></i> VIEW BILL
+        </button>
         ` : ''}
 
         <div class="grand-total">
@@ -1063,6 +1261,26 @@ app.get(['/', '/pay'], (req, res) => {
       </div>
     </div>
     
+  </div>
+
+  <!-- Bill Receipt Modal -->
+  <div id="bill-modal" class="modal-overlay">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeBillModal()">&times;</button>
+      <h3 class="modal-title"><i class="fa-solid fa-receipt"></i> Bill Receipt</h3>
+      <div class="modal-body">
+        <div id="modal-loading" style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
+          <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary); margin-bottom: 1rem; display: block;"></i>
+          <span>Fetching receipt image...</span>
+        </div>
+        <img id="modal-bill-img" src="" alt="Bill Receipt" style="display: none;" onload="onImageLoadSuccess()" onerror="onImageLoadError()">
+        <div id="modal-error" style="display: none; text-align: center; color: #ef4444; padding: 2rem 1rem;">
+          <i class="fa-solid fa-circle-xmark" style="font-size: 2.5rem; margin-bottom: 1rem; display: block;"></i>
+          <span style="font-weight: 700; font-size: 1rem; color: #ffffff; display: block; margin-bottom: 0.5rem;">Receipt Unavailable</span>
+          <span style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; display: block;">Your purchase statement is still being processed or was shared offline. Please check your WhatsApp attachments or try again in a few seconds.</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Toast notification -->
@@ -1219,6 +1437,47 @@ app.get(['/', '/pay'], (req, res) => {
       }
     }
 
+    // Modal actions
+    function openBillModal(src) {
+      const modal = document.getElementById('bill-modal');
+      const img = document.getElementById('modal-bill-img');
+      const loading = document.getElementById('modal-loading');
+      const errorDiv = document.getElementById('modal-error');
+      
+      if (modal && img) {
+        // Reset state
+        img.style.display = 'none';
+        if (loading) loading.style.display = 'block';
+        if (errorDiv) errorDiv.style.display = 'none';
+        
+        img.src = src;
+        modal.classList.add('show');
+      }
+    }
+
+    function closeBillModal() {
+      const modal = document.getElementById('bill-modal');
+      if (modal) {
+        modal.classList.remove('show');
+      }
+    }
+
+    function onImageLoadSuccess() {
+      const img = document.getElementById('modal-bill-img');
+      const loading = document.getElementById('modal-loading');
+      if (img) img.style.display = 'block';
+      if (loading) loading.style.display = 'none';
+    }
+
+    function onImageLoadError() {
+      const img = document.getElementById('modal-bill-img');
+      const loading = document.getElementById('modal-loading');
+      const errorDiv = document.getElementById('modal-error');
+      if (img) img.style.display = 'none';
+      if (loading) loading.style.display = 'none';
+      if (errorDiv) errorDiv.style.display = 'block';
+    }
+
     // Intersection Observer for scroll reveal animations
     document.addEventListener('DOMContentLoaded', function() {
       const revealElements = document.querySelectorAll('.reveal-on-scroll');
@@ -1251,6 +1510,27 @@ app.get(['/', '/pay'], (req, res) => {
 
       // Check for previously submitted customer ratings
       checkPreviousRating();
+
+      // Bind modal triggers
+      const modal = document.getElementById('bill-modal');
+      if (modal) {
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) {
+            closeBillModal();
+          }
+        });
+      }
+      
+      const viewBtn = document.getElementById('view-bill-btn');
+      if (viewBtn) {
+        viewBtn.addEventListener('click', function() {
+          let src = '${imageUrl}';
+          if (!src.startsWith('data:') && !src.startsWith('/') && !src.startsWith('http')) {
+            src = '/uploads/' + src;
+          }
+          openBillModal(src);
+        });
+      }
     });
 
     // Initial load and run
