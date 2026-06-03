@@ -397,7 +397,10 @@ app.get(['/', '/pay'], (req, res) => {
       color: var(--text-muted);
       line-height: 1.6;
       font-weight: 400;
-      text-indent: 1.5rem;
+    }
+
+    .about-text.first-para {
+      text-indent: 48%;
     }
 
     .about-text strong {
@@ -719,28 +722,20 @@ app.get(['/', '/pay'], (req, res) => {
       text-align: center;
     }
 
-    .grand-total {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 1rem;
-      letter-spacing: -0.01em;
-      background: rgba(255, 255, 255, 0.02);
-      padding: 0.55rem 0.85rem;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 70%;
-      margin-left: auto;
-      margin-right: auto;
+    .grand-total-simple {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 1.15rem;
+      text-align: center;
+      letter-spacing: 0.01em;
     }
 
-    .grand-total-amount {
+    .grand-total-amount-simple {
       color: var(--primary);
-      font-weight: 900;
+      font-weight: 800;
       font-size: 1.25rem;
+      margin-left: 0.35rem;
     }
 
     .pay-btn {
@@ -1136,27 +1131,33 @@ app.get(['/', '/pay'], (req, res) => {
       }
     }
 
-    /* Logo Auto-Swap styles */
+    /* Logo Auto-Swap styles (3D Coin Flip) */
     .logo-swap-container {
       position: relative;
-      overflow: hidden;
+      perspective: 1000px;
     }
     
     .logo-swap-container.dashboard-logo {
       width: 80px;
       height: 80px;
-      border-radius: 20px;
-      border: 3px solid var(--primary);
-      box-shadow: 0 8px 20px rgba(250, 204, 21, 0.2);
     }
     
     .logo-swap-container.checkout-logo {
       width: 120px;
       height: 120px;
-      border-radius: 50%;
-      border: 4px solid var(--primary);
-      box-shadow: 0 0 25px rgba(250, 204, 21, 0.2);
       margin: 0 auto;
+    }
+    
+    .logo-swap-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 1.2s cubic-bezier(0.68, -0.6, 0.32, 1.6);
+    }
+    
+    .logo-swap-container.flipped .logo-swap-inner {
+      transform: rotateY(180deg);
     }
     
     .logo-swap-image {
@@ -1165,15 +1166,30 @@ app.get(['/', '/pay'], (req, res) => {
       left: 0;
       width: 100%;
       height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
       object-fit: cover;
-      opacity: 0;
-      transform: scale(0.92) rotate(-3deg);
-      transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    .logo-swap-image.active {
-      opacity: 1;
-      transform: scale(1) rotate(0deg);
+    .logo-swap-image.front {
+      transform: rotateY(0deg);
+      z-index: 2;
+    }
+    
+    .logo-swap-image.back {
+      transform: rotateY(180deg);
+    }
+
+    .dashboard-logo .logo-swap-image {
+      border-radius: 20px;
+      border: 3px solid var(--primary);
+      box-shadow: 0 8px 20px rgba(250, 204, 21, 0.2);
+    }
+    
+    .checkout-logo .logo-swap-image {
+      border-radius: 50%;
+      border: 4px solid var(--primary);
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.2);
     }
 
     /* Premium Gallery Carousel CSS */
@@ -1310,8 +1326,10 @@ app.get(['/', '/pay'], (req, res) => {
         <!-- Store Header Section -->
         <div class="store-header-section">
           <div class="logo-swap-container dashboard-logo">
-            <img class="logo-swap-image active" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
-            <img class="logo-swap-image" src="/public/profile%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Profile Logo">
+            <div class="logo-swap-inner">
+              <img class="logo-swap-image front" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
+              <img class="logo-swap-image back" src="/public/profile%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Profile Logo">
+            </div>
           </div>
           <div class="store-title-group">
             <span class="est-badge">Est. 2019</span>
@@ -1346,20 +1364,12 @@ app.get(['/', '/pay'], (req, res) => {
           </button>
           <button class="carousel-nav next" id="carousel-next" aria-label="Next image">
             <i class="fa-solid fa-chevron-right"></i>
-          </button>
-          <div class="carousel-dots" id="carousel-dots">
-            <span class="carousel-dot active" data-slide="0"></span>
-            <span class="carousel-dot" data-slide="1"></span>
-            <span class="carousel-dot" data-slide="2"></span>
-            <span class="carousel-dot" data-slide="3"></span>
-            <span class="carousel-dot" data-slide="4"></span>
-          </div>
         </div>
 
         <!-- About Section -->
         <div class="info-section reveal-on-scroll">
           <h2 class="section-title"><i class="fa-solid fa-store icon-gold"></i> About Our Store</h2>
-          <p class="about-text">
+          <p class="about-text first-para">
             Established in 2019, <strong>Sri Mutharamman Store</strong>,<br/>owned by <strong>M. Saminathan</strong>, is your trusted neighborhood grocery and department store, committed to providing quality products at fair and honest prices.
           </p>
           <p class="about-text" style="margin-top: 0.65rem;">
@@ -1489,8 +1499,10 @@ app.get(['/', '/pay'], (req, res) => {
       <div class="card reveal-on-scroll">
         <div class="logo-container">
           <div class="logo-swap-container checkout-logo">
-            <img class="logo-swap-image active" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
-            <img class="logo-swap-image" src="/public/profile%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Profile Logo">
+            <div class="logo-swap-inner">
+              <img class="logo-swap-image front" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
+              <img class="logo-swap-image back" src="/public/profile%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Profile Logo">
+            </div>
           </div>
         </div>
         
@@ -1504,9 +1516,8 @@ app.get(['/', '/pay'], (req, res) => {
         </button>
         ` : ''}
 
-        <div class="grand-total">
-          <span>Grand Total</span>
-          <span class="grand-total-amount">₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <div class="grand-total-simple">
+          Grand Total: <span class="grand-total-amount-simple">₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
 
         <a href="${upiLink}" class="pay-btn">
@@ -1733,29 +1744,22 @@ app.get(['/', '/pay'], (req, res) => {
       updateStarsState();
     }
 
-    // Automatic logo swapper with 2-second interval
+    // Automatic logo swapper with 3-second coin rolling flip animation
     function initLogoSwap() {
       const containers = document.querySelectorAll('.logo-swap-container');
       containers.forEach(container => {
-        const images = container.querySelectorAll('.logo-swap-image');
-        if (images.length < 2) return;
-        
-        let currentIndex = 0;
         setInterval(() => {
-          images[currentIndex].classList.remove('active');
-          currentIndex = (currentIndex + 1) % images.length;
-          images[currentIndex].classList.add('active');
-        }, 2000); // Swap logo every 2 seconds
+          container.classList.toggle('flipped');
+        }, 3000); // Flip logo every 3 seconds as requested
       });
     }
 
-    // Professional image gallery carousel
+    // Professional image gallery carousel (without dots)
     function initGalleryCarousel() {
       const container = document.querySelector('.gallery-carousel-container');
       if (!container) return;
       
       const slides = container.querySelectorAll('.gallery-slide');
-      const dots = container.querySelectorAll('.carousel-dot');
       const prevBtn = document.getElementById('carousel-prev');
       const nextBtn = document.getElementById('carousel-next');
       
@@ -1765,16 +1769,14 @@ app.get(['/', '/pay'], (req, res) => {
       let autoplayInterval = null;
       
       function showSlide(index) {
-        // Deactivate current slide/dot
+        // Deactivate current slide
         slides[currentIndex].classList.remove('active');
-        if (dots[currentIndex]) dots[currentIndex].classList.remove('active');
         
         // Calculate new index
         currentIndex = (index + slides.length) % slides.length;
         
-        // Activate new slide/dot
+        // Activate new slide
         slides[currentIndex].classList.add('active');
-        if (dots[currentIndex]) dots[currentIndex].classList.add('active');
       }
       
       function nextSlide() {
@@ -1807,15 +1809,6 @@ app.get(['/', '/pay'], (req, res) => {
           startAutoplay();
         });
       }
-      
-      // Dots pagination click bindings
-      dots.forEach((dot, idx) => {
-        dot.addEventListener('click', () => {
-          stopAutoplay();
-          showSlide(idx);
-          startAutoplay();
-        });
-      });
       
       // Autoplay activation
       startAutoplay();
