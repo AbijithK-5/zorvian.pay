@@ -148,43 +148,48 @@ app.get(['/', '/pay'], (req, res) => {
         res.setHeader('Expires', '0');
         res.setHeader('Surrogate-Control', 'no-store');
 
+        // Extract query parameters to local variables to prevent read-only issues on req.query
+        const shortBillNo = req.query.b || '';
+        let amount = req.query.am || '0.00';
+        let note = req.query.tn || '';
+        let billDataParam = req.query.bd || '';
+
         // ── Short URL support: ?b=BILLNO&am=AMOUNT ──────────────────────────
         // The billing app generates a short link for WhatsApp. When a customer
         // clicks it, we detect the ?b= param and expand it to the full page,
         // injecting the stored bill data so View Bill works properly.
-        const shortBillNo = req.query.b || '';
-        if (shortBillNo && !req.query.tn) {
+        if (shortBillNo && !note) {
           // Reconstruct the note from the bill number
-          req.query.tn = `Bill No: ${shortBillNo} | SRI MUTHARAMMAN STORE`;
-          req.query.am = req.query.am || '0.00';
+          note = `Bill No: ${shortBillNo} | SRI MUTHARAMMAN STORE`;
+          amount = req.query.am || '0.00';
 
           // Inject stored bill data so View Bill modal works
-          if (!req.query.bd) {
+          if (!billDataParam) {
             const regularDataKey = `bill-data-${shortBillNo}`;
             const stockDataKey = `stock-data-${shortBillNo}`;
             if (billDataCache.has(regularDataKey)) {
-              req.query.bd = billDataCache.get(regularDataKey);
+              billDataParam = billDataCache.get(regularDataKey);
             } else if (billDataCache.has(stockDataKey)) {
-              req.query.bd = billDataCache.get(stockDataKey);
+              billDataParam = billDataCache.get(stockDataKey);
             } else {
               // Try /tmp filesystem (persists across warm lambdas)
               try {
                 const tmpRegular = path.join('/tmp', `billdata-${shortBillNo}.txt`);
                 const tmpStock = path.join('/tmp', `billdata-stock-${shortBillNo}.txt`);
                 if (fs.existsSync(tmpRegular)) {
-                  req.query.bd = fs.readFileSync(tmpRegular, 'utf8');
+                  billDataParam = fs.readFileSync(tmpRegular, 'utf8');
                 } else if (fs.existsSync(tmpStock)) {
-                  req.query.bd = fs.readFileSync(tmpStock, 'utf8');
+                  billDataParam = fs.readFileSync(tmpStock, 'utf8');
                 }
               } catch (e) { /* silent */ }
             }
           }
         }
-        // ─────────────────────────────────────────────────────────────────────
 
-        const amount = req.query.am || '0.00';
-        const note = req.query.tn || 'SRI MUTHARAMMAN STORE';
-        const billDataParam = req.query.bd || '';
+        if (!note) {
+          note = 'SRI MUTHARAMMAN STORE';
+        }
+        // ─────────────────────────────────────────────────────────────────────
         
         // Build the UPI Deep link
         const upiLink = `upi://pay?pa=paytmqr6ylc3j@ptys&pn=SRI%20MUTHARAMMAN%20STORE&am=${encodeURIComponent(amount)}&cu=INR`;
