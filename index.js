@@ -132,6 +132,17 @@ app.get(['/', '/pay'], (req, res) => {
         res.setHeader('Expires', '0');
         res.setHeader('Surrogate-Control', 'no-store');
 
+        // ── Short URL support: ?b=BILLNO&am=AMOUNT ──────────────────────────
+        // The billing app generates a short link for WhatsApp. When a customer
+        // clicks it, we detect the ?b= param and expand it to the full page.
+        const shortBillNo = req.query.b || '';
+        if (shortBillNo && !req.query.tn) {
+          // Reconstruct the note from the bill number
+          req.query.tn = `Bill No: ${shortBillNo} | SRI MUTHARAMMAN STORE`;
+          req.query.am  = req.query.am || '0.00';
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         const amount = req.query.am || '0.00';
         const note = req.query.tn || 'SRI MUTHARAMMAN STORE';
         const billDataParam = req.query.bd || '';
