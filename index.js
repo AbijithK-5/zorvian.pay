@@ -1135,6 +1135,167 @@ app.get(['/', '/pay'], (req, res) => {
         border-radius: 12px;
       }
     }
+
+    /* Logo Auto-Swap styles */
+    .logo-swap-container {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .logo-swap-container.dashboard-logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      border: 3px solid var(--primary);
+      box-shadow: 0 8px 20px rgba(250, 204, 21, 0.2);
+    }
+    
+    .logo-swap-container.checkout-logo {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 4px solid var(--primary);
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.2);
+      margin: 0 auto;
+    }
+    
+    .logo-swap-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transform: scale(0.92) rotate(-3deg);
+      transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .logo-swap-image.active {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
+
+    /* Premium Gallery Carousel CSS */
+    .gallery-carousel-container {
+      position: relative;
+      width: 100%;
+      height: 250px;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+      margin-bottom: 1.5rem;
+      background: #0f172a;
+    }
+
+    .gallery-slider {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .gallery-slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transform: scale(1.05);
+      transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    .gallery-slide.active {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+
+    .gallery-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Carousel Nav Buttons */
+    .carousel-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      z-index: 10;
+    }
+
+    .gallery-carousel-container:hover .carousel-nav {
+      opacity: 1;
+    }
+
+    .carousel-nav:hover {
+      background: var(--primary);
+      color: #0b0f19;
+      border-color: var(--primary);
+      box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .carousel-nav.prev {
+      left: 1.25rem;
+    }
+
+    .carousel-nav.next {
+      right: 1.25rem;
+    }
+
+    /* Pagination Dots */
+    .carousel-dots {
+      position: absolute;
+      bottom: 1.25rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 0.6rem;
+      z-index: 10;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 0.45rem 0.9rem;
+      border-radius: 50px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .carousel-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.35);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .carousel-dot:hover {
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .carousel-dot.active {
+      background: var(--primary);
+      width: 22px;
+      box-shadow: 0 0 8px rgba(250, 204, 21, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -1148,7 +1309,10 @@ app.get(['/', '/pay'], (req, res) => {
         
         <!-- Store Header Section -->
         <div class="store-header-section">
-          <img class="dashboard-logo" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
+          <div class="logo-swap-container dashboard-logo">
+            <img class="logo-swap-image active" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
+            <img class="logo-swap-image" src="/public/profile%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Profile Logo">
+          </div>
           <div class="store-title-group">
             <span class="est-badge">Est. 2019</span>
             <h1 class="store-main-name">Sri Mutharamman Store</h1>
@@ -1157,6 +1321,40 @@ app.get(['/', '/pay'], (req, res) => {
         </div>
 
         <hr class="section-divider store-header-section">
+
+        <!-- Image Gallery Carousel -->
+        <div class="gallery-carousel-container reveal-on-scroll">
+          <div class="gallery-slider" id="gallery-slider">
+            <div class="gallery-slide active">
+              <img src="/public/1.jpeg" alt="Store Image 1">
+            </div>
+            <div class="gallery-slide">
+              <img src="/public/2.jpeg" alt="Store Image 2">
+            </div>
+            <div class="gallery-slide">
+              <img src="/public/3.jpeg" alt="Store Image 3">
+            </div>
+            <div class="gallery-slide">
+              <img src="/public/4.jpeg" alt="Store Image 4">
+            </div>
+            <div class="gallery-slide">
+              <img src="/public/5.jpeg" alt="Store Image 5">
+            </div>
+          </div>
+          <button class="carousel-nav prev" id="carousel-prev" aria-label="Previous image">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button class="carousel-nav next" id="carousel-next" aria-label="Next image">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <div class="carousel-dots" id="carousel-dots">
+            <span class="carousel-dot active" data-slide="0"></span>
+            <span class="carousel-dot" data-slide="1"></span>
+            <span class="carousel-dot" data-slide="2"></span>
+            <span class="carousel-dot" data-slide="3"></span>
+            <span class="carousel-dot" data-slide="4"></span>
+          </div>
+        </div>
 
         <!-- About Section -->
         <div class="info-section reveal-on-scroll">
@@ -1290,7 +1488,10 @@ app.get(['/', '/pay'], (req, res) => {
     <div class="checkout-container">
       <div class="card reveal-on-scroll">
         <div class="logo-container">
-          <img class="logo" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
+          <div class="logo-swap-container checkout-logo">
+            <img class="logo-swap-image active" src="/public/sri%20mutharamman%20store%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Store Logo">
+            <img class="logo-swap-image" src="/public/profile%20logo.jpeg" onerror="this.src='/public/zorvian%20logo.jpeg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1542838132-92c53300491e?w=150&auto=format&fit=crop';}" alt="Profile Logo">
+          </div>
         </div>
         
         <h1 class="store-name">Sri Mutharamman Store</h1>
@@ -1530,6 +1731,98 @@ app.get(['/', '/pay'], (req, res) => {
 
     function checkPreviousRating() {
       updateStarsState();
+    }
+
+    // Automatic logo swapper with 2-second interval
+    function initLogoSwap() {
+      const containers = document.querySelectorAll('.logo-swap-container');
+      containers.forEach(container => {
+        const images = container.querySelectorAll('.logo-swap-image');
+        if (images.length < 2) return;
+        
+        let currentIndex = 0;
+        setInterval(() => {
+          images[currentIndex].classList.remove('active');
+          currentIndex = (currentIndex + 1) % images.length;
+          images[currentIndex].classList.add('active');
+        }, 2000); // Swap logo every 2 seconds
+      });
+    }
+
+    // Professional image gallery carousel
+    function initGalleryCarousel() {
+      const container = document.querySelector('.gallery-carousel-container');
+      if (!container) return;
+      
+      const slides = container.querySelectorAll('.gallery-slide');
+      const dots = container.querySelectorAll('.carousel-dot');
+      const prevBtn = document.getElementById('carousel-prev');
+      const nextBtn = document.getElementById('carousel-next');
+      
+      if (slides.length === 0) return;
+      
+      let currentIndex = 0;
+      let autoplayInterval = null;
+      
+      function showSlide(index) {
+        // Deactivate current slide/dot
+        slides[currentIndex].classList.remove('active');
+        if (dots[currentIndex]) dots[currentIndex].classList.remove('active');
+        
+        // Calculate new index
+        currentIndex = (index + slides.length) % slides.length;
+        
+        // Activate new slide/dot
+        slides[currentIndex].classList.add('active');
+        if (dots[currentIndex]) dots[currentIndex].classList.add('active');
+      }
+      
+      function nextSlide() {
+        showSlide(currentIndex + 1);
+      }
+      
+      function startAutoplay() {
+        autoplayInterval = setInterval(nextSlide, 3500); // Autoplay slide every 3.5 seconds
+      }
+      
+      function stopAutoplay() {
+        if (autoplayInterval) {
+          clearInterval(autoplayInterval);
+        }
+      }
+      
+      // Control bindings
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+          stopAutoplay();
+          showSlide(currentIndex - 1);
+          startAutoplay();
+        });
+      }
+      
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          stopAutoplay();
+          showSlide(currentIndex + 1);
+          startAutoplay();
+        });
+      }
+      
+      // Dots pagination click bindings
+      dots.forEach((dot, idx) => {
+        dot.addEventListener('click', () => {
+          stopAutoplay();
+          showSlide(idx);
+          startAutoplay();
+        });
+      });
+      
+      // Autoplay activation
+      startAutoplay();
+      
+      // Pause transitions when mouse enters container
+      container.addEventListener('mouseenter', stopAutoplay);
+      container.addEventListener('mouseleave', startAutoplay);
     }
 
     // Base64 decoder and text-receipt rendering logic
@@ -1774,6 +2067,12 @@ app.get(['/', '/pay'], (req, res) => {
           openBillModal(src);
         });
       }
+      
+      // Initialize logo swap
+      initLogoSwap();
+      
+      // Initialize gallery carousel
+      initGalleryCarousel();
     });
 
     // Initial load and run
