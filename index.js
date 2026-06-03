@@ -25,6 +25,46 @@ app.use((req, res, next) => {
 // Cache Map for uploaded bill images (in-memory)
 const billImagesCache = new Map();
 
+// Ratings Store & Persistent Storage
+let ratingsStore = {};
+const ratingsFilePath = path.join(__dirname, 'ratings.json');
+const tmpRatingsFilePath = path.join('/tmp', 'ratings.json');
+
+function loadRatings() {
+  try {
+    if (fs.existsSync(ratingsFilePath)) {
+      ratingsStore = JSON.parse(fs.readFileSync(ratingsFilePath, 'utf8'));
+      console.log('[Server] Loaded ratings from project directory');
+    } else if (fs.existsSync(tmpRatingsFilePath)) {
+      ratingsStore = JSON.parse(fs.readFileSync(tmpRatingsFilePath, 'utf8'));
+      console.log('[Server] Loaded ratings from /tmp');
+    }
+  } catch (err) {
+    console.error('[Server] Failed to load ratings:', err.message);
+  }
+}
+
+function saveRatings() {
+  const data = JSON.stringify(ratingsStore, null, 2);
+  fs.writeFile(ratingsFilePath, data, 'utf8', (err) => {
+    if (err) {
+      console.warn('[Server] Failed to write ratings to project directory, trying /tmp:', err.message);
+      fs.writeFile(tmpRatingsFilePath, data, 'utf8', (tmpErr) => {
+        if (tmpErr) {
+          console.error('[Server] Failed to write ratings to /tmp:', tmpErr.message);
+        } else {
+          console.log('[Server] Saved ratings to /tmp');
+        }
+      });
+    } else {
+      console.log('[Server] Saved ratings to project directory');
+    }
+  });
+}
+
+// Initial load of ratings
+loadRatings();
+
 // Serve temp-uploads for Vercel /tmp directory caching
 app.use('/tmp-uploads', express.static('/tmp'));
 
@@ -58,6 +98,32 @@ app.post('/api/upload-bill', (req, res) => {
   }
 
   return res.json({ ok: true, message: 'Image uploaded and cached successfully' });
+});
+
+// REST endpoint to save rating for a bill (bill sharing wise)
+app.post('/api/rate-bill', (req, res) => {
+  const { billNo, score } = req.body;
+  const numericScore = parseInt(score, 10);
+  if (!numericScore || numericScore < 1 || numericScore > 5) {
+    return res.status(400).json({ ok: false, error: 'Invalid score' });
+  }
+
+  const key = billNo || 'general';
+  if (!ratingsStore[key]) {
+    ratingsStore[key] = { sum: 0, count: 0 };
+  }
+  
+  ratingsStore[key].sum += numericScore;
+  ratingsStore[key].count += 1;
+  
+  saveRatings();
+
+  const average = (ratingsStore[key].sum / ratingsStore[key].count).toFixed(1);
+  return res.json({
+    ok: true,
+    average: parseFloat(average),
+    count: ratingsStore[key].count
+  });
 });
 
 app.get(['/', '/pay'], (req, res) => {
@@ -134,6 +200,12 @@ app.get(['/', '/pay'], (req, res) => {
         if (billDataParam && !imageUrl) {
           imageUrl = 'text-receipt.png';
         }
+
+        // Retrieve rating statistics for this bill
+        const ratingKey = billNo || 'general';
+        const ratingInfo = ratingsStore[ratingKey] || { sum: 0, count: 0 };
+        const currentAverage = ratingInfo.count > 0 ? (ratingInfo.sum / ratingInfo.count).toFixed(1) : '0.0';
+        const currentCount = ratingInfo.count;
         
         // HTML Code
         const html = `<!DOCTYPE html>
@@ -781,7 +853,7 @@ app.get(['/', '/pay'], (req, res) => {
       opacity: 1;
     }
 
-    /* Interactive Emoji Rating Widget */
+    /* Interactive Star Rating Widget */
     .rating-widget {
       background: rgba(255, 255, 255, 0.015);
       border: 1px solid rgba(255, 255, 255, 0.05);
@@ -798,77 +870,55 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .rating-title {
-      font-size: 0.82rem;
+      font-size: 0.85rem;
       font-weight: 700;
       color: #ffffff;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.5rem;
       letter-spacing: -0.01em;
     }
 
-    .emoji-container {
+    .star-rating-container {
       display: flex;
-      justify-content: space-around;
+      justify-content: center;
       align-items: center;
-      gap: 0.2rem;
+      gap: 0.6rem;
+      margin-bottom: 0.4rem;
     }
 
-    .emoji-btn {
+    .star-btn {
       background: none;
       border: none;
       cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.25rem;
-      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       padding: 0.25rem;
-      border-radius: 12px;
-      width: 19%;
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
-    .emoji-icon {
-      font-size: 1.55rem;
-      transition: transform 0.25s ease;
-      filter: grayscale(0.15);
+    .star-btn i {
+      font-size: 1.85rem;
+      color: rgba(255, 255, 255, 0.2);
+      transition: color 0.2s, transform 0.2s, text-shadow 0.2s;
     }
 
-    .emoji-label {
-      font-size: 0.62rem;
+    .star-btn:hover {
+      transform: scale(1.22);
+    }
+
+    .star-btn.filled i {
+      color: var(--primary);
+      text-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
+    }
+
+    .star-btn.hover-filled i {
+      color: #fde047;
+      text-shadow: 0 0 8px rgba(253, 224, 71, 0.25);
+    }
+
+    .rating-stats {
+      font-size: 0.78rem;
       color: var(--text-muted);
       font-weight: 600;
-      opacity: 0.8;
-      transition: color 0.2s;
-    }
-
-    .emoji-btn:hover {
-      transform: scale(1.18);
-    }
-
-    .emoji-btn:hover .emoji-icon {
-      filter: grayscale(0) drop-shadow(0 0 6px rgba(250, 204, 21, 0.35));
-      transform: translateY(-2px);
-    }
-
-    .emoji-btn:hover .emoji-label {
-      color: var(--primary);
-    }
-
-    .emoji-btn.selected {
-      transform: scale(1.12);
-    }
-
-    .emoji-btn.selected .emoji-icon {
-      filter: grayscale(0) drop-shadow(0 0 8px rgba(16, 185, 129, 0.35));
-    }
-
-    .emoji-btn.selected .emoji-label {
-      color: var(--success);
-    }
-
-    .emoji-btn.dimmed {
-      opacity: 0.35;
-      transform: scale(0.9);
-      filter: grayscale(0.8);
+      margin-top: 0.25rem;
+      letter-spacing: 0.01em;
     }
 
     .rating-feedback {
@@ -1111,10 +1161,16 @@ app.get(['/', '/pay'], (req, res) => {
         <div class="info-section reveal-on-scroll">
           <h2 class="section-title"><i class="fa-solid fa-store icon-gold"></i> About Our Store</h2>
           <p class="about-text">
-            Established in 2019, <strong>Sri Mutharamman Store</strong> is your trusted neighborhood grocery and department store, committed to providing quality products at fair and honest prices. We offer a wide range of groceries, daily essentials, beverages, rice varieties, household items, stationery products, and more to meet the everyday needs of our customers.
+            Established in 2019, <strong>Sri Mutharamman Store</strong>, owned by <strong>M. Saminathan</strong>, is your trusted neighborhood grocery and department store, committed to providing quality products at fair and honest prices.
+          </p>
+          <p class="about-text" style="margin-top: 0.65rem;">
+            We offer a wide range of groceries, daily essentials, rice varieties, household items, stationery products, snacks, cool drinks, fresh vegetables, fresh fruits, beverages, and many other products to meet the everyday needs of our customers.
           </p>
           <p class="about-text" style="margin-top: 0.65rem;">
             Our goal is to deliver excellent service, quality products, and a pleasant shopping experience for every customer. We are dedicated to maintaining high standards of hygiene, customer satisfaction, and value for money.
+          </p>
+          <p class="about-text" style="margin-top: 0.65rem;">
+            At <strong>Sri Mutharamman Store</strong>, we believe in building lasting relationships with our customers through trust, quality, and reliable service.
           </p>
         </div>
 
@@ -1197,30 +1253,28 @@ app.get(['/', '/pay'], (req, res) => {
             <p class="address-body">No. 7/209, Bannari Amman Nagar, Karattumedu, Coimbatore</p>
           </div>
 
-          <!-- Interactive Emoji Rating Widget -->
+          <!-- Interactive Star Rating Widget -->
           <div class="rating-widget">
             <h3 class="rating-title">How was your shopping experience?</h3>
-            <div class="emoji-container" id="emoji-rating-container">
-              <button class="emoji-btn" onclick="submitRating(1, '🥺')" title="Poor">
-                <span class="emoji-icon">🥺</span>
-                <span class="emoji-label">Poor</span>
+            <div class="star-rating-container" id="star-rating-container">
+              <button class="star-btn" onclick="submitRating(1)" data-value="1" title="Poor">
+                <i class="fa-regular fa-star"></i>
               </button>
-              <button class="emoji-btn" onclick="submitRating(2, '🙁')" title="Fair">
-                <span class="emoji-icon">🙁</span>
-                <span class="emoji-label">Fair</span>
+              <button class="star-btn" onclick="submitRating(2)" data-value="2" title="Fair">
+                <i class="fa-regular fa-star"></i>
               </button>
-              <button class="emoji-btn" onclick="submitRating(3, '🙂')" title="Good">
-                <span class="emoji-icon">🙂</span>
-                <span class="emoji-label">Good</span>
+              <button class="star-btn" onclick="submitRating(3)" data-value="3" title="Good">
+                <i class="fa-regular fa-star"></i>
               </button>
-              <button class="emoji-btn" onclick="submitRating(4, '😊')" title="Very Good">
-                <span class="emoji-icon">😊</span>
-                <span class="emoji-label">Very Good</span>
+              <button class="star-btn" onclick="submitRating(4)" data-value="4" title="Very Good">
+                <i class="fa-regular fa-star"></i>
               </button>
-              <button class="emoji-btn" onclick="submitRating(5, '😍')" title="Excellent">
-                <span class="emoji-icon">😍</span>
-                <span class="emoji-label">Excellent</span>
+              <button class="star-btn" onclick="submitRating(5)" data-value="5" title="Excellent">
+                <i class="fa-regular fa-star"></i>
               </button>
+            </div>
+            <div id="rating-stats" class="rating-stats">
+              ${currentCount > 0 ? `Rating: ${currentAverage} ★ (${currentCount} rating${currentCount > 1 ? 's' : ''})` : 'No ratings yet for this bill'}
             </div>
             <div id="rating-feedback" class="rating-feedback"></div>
           </div>
@@ -1308,6 +1362,7 @@ app.get(['/', '/pay'], (req, res) => {
 
   <script>
     const encodedBillData = '${billDataParam}';
+    const billNo = '${billNo || "general"}';
 
     // Live store open/closed status indicator logic based on IST (UTC+5.5)
     function updateLiveStatus() {
@@ -1395,24 +1450,71 @@ app.get(['/', '/pay'], (req, res) => {
       });
     }
 
-    // Interactive emoji rating widget handler
-    function submitRating(score, emoji) {
-      const container = document.getElementById('emoji-rating-container');
-      const feedback = document.getElementById('rating-feedback');
+    // Update stars appearance based on active rating score
+    function updateStarsState() {
+      const saved = localStorage.getItem('sms_store_rating_' + billNo);
+      let currentRating = 0;
+      if (saved) {
+        try {
+          currentRating = JSON.parse(saved).score;
+        } catch(e) {}
+      }
       
-      if (!container || !feedback) return;
-      
-      const buttons = container.querySelectorAll('.emoji-btn');
-      
-      // Store rating in localStorage
-      localStorage.setItem('sms_store_rating', JSON.stringify({ score, emoji }));
-      
-      buttons.forEach((btn, index) => {
-        if (index + 1 === score) {
-          btn.className = 'emoji-btn selected';
+      const stars = document.querySelectorAll('.star-btn');
+      stars.forEach((s, idx) => {
+        const icon = s.querySelector('i');
+        s.classList.remove('hover-filled');
+        if (idx < currentRating) {
+          icon.className = 'fa-solid fa-star';
+          s.classList.add('filled');
         } else {
-          btn.className = 'emoji-btn dimmed';
+          icon.className = 'fa-regular fa-star';
+          s.classList.remove('filled');
         }
+      });
+    }
+
+    // Submit rating to local storage and server
+    function submitRating(score) {
+      if (localStorage.getItem('sms_store_rating_' + billNo)) {
+        showToast("You have already rated this bill!");
+        return;
+      }
+      
+      const feedback = document.getElementById('rating-feedback');
+      const stats = document.getElementById('rating-stats');
+      
+      if (!feedback) return;
+      
+      // Save rating in localStorage bill-wise
+      localStorage.setItem('sms_store_rating_' + billNo, JSON.stringify({ score: score }));
+      
+      // Update visual stars state
+      updateStarsState();
+      
+      // Send to backend API
+      fetch('/api/rate-bill', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          billNo: billNo,
+          score: score
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok) {
+          if (stats) {
+            stats.innerText = 'Rating: ' + data.average + ' ★ (' + data.count + ' rating' + (data.count > 1 ? 's' : '') + ')';
+          }
+          showToast("Rating recorded successfully!");
+        }
+      })
+      .catch(err => {
+        console.error('Failed to submit rating:', err);
+        showToast("Failed to sync rating with server.");
       });
       
       let thankYouMsg = "Thank you! We appreciate your feedback.";
@@ -1423,40 +1525,10 @@ app.get(['/', '/pay'], (req, res) => {
       
       feedback.innerText = thankYouMsg;
       feedback.className = 'rating-feedback show';
-      
-      showToast("Feedback recorded!");
     }
 
     function checkPreviousRating() {
-      const saved = localStorage.getItem('sms_store_rating');
-      if (saved) {
-        try {
-          const { score, emoji } = JSON.parse(saved);
-          const container = document.getElementById('emoji-rating-container');
-          const feedback = document.getElementById('rating-feedback');
-          if (container && feedback) {
-            const buttons = container.querySelectorAll('.emoji-btn');
-            buttons.forEach((btn, index) => {
-              if (index + 1 === score) {
-                btn.className = 'emoji-btn selected';
-              } else {
-                btn.className = 'emoji-btn dimmed';
-              }
-            });
-            
-            let thankYouMsg = "Thank you! We appreciate your feedback.";
-            if (score === 5) thankYouMsg = "We're thrilled you loved your experience! 😍 Thank you!";
-            else if (score === 4) thankYouMsg = "Thank you for the wonderful rating! 😊";
-            else if (score === 3) thankYouMsg = "Thank you! We're glad you had a good experience. 🙂";
-            else thankYouMsg = "Thank you for your honest feedback. We will work to improve! 🙏";
-            
-            feedback.innerText = thankYouMsg;
-            feedback.className = 'rating-feedback show';
-          }
-        } catch (e) {
-          // Ignore
-        }
-      }
+      updateStarsState();
     }
 
     // Base64 decoder and text-receipt rendering logic
@@ -1529,9 +1601,9 @@ app.get(['/', '/pay'], (req, res) => {
 
       var customerMob = data.m || '-';
 
-      return '<div style="font-family: \'Arial\', sans-serif; color: #000; background: #fff; padding: 14px; border-radius: 12px; line-height: 1.4; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1;">' +
+      return '<div style="font-family: \\\'Arial\\\', sans-serif; color: #000; background: #fff; padding: 14px; border-radius: 12px; line-height: 1.4; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1;">' +
         '<div style="text-align: center; margin-bottom: 8px;">' +
-        '<div style="font-family: \'Times New Roman\', serif; font-size: 24px; font-weight: 900; margin-bottom: 2px; color: #000;">SMS</div>' +
+        '<div style="font-family: \\\'Times New Roman\\\', serif; font-size: 24px; font-weight: 900; margin-bottom: 2px; color: #000;">SMS</div>' +
         '<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #000;">SRI MUTHARAMMAN STORE</div>' +
         '<div style="font-size: 9px; color: #334155; line-height: 1.3; margin-top: 2px;">' +
         'No. 7/209, Bannari Amman Nagar,<br/>' +
@@ -1656,6 +1728,30 @@ app.get(['/', '/pay'], (req, res) => {
 
       // Check for previously submitted customer ratings
       checkPreviousRating();
+
+      // Bind hover events on rating stars
+      const stars = document.querySelectorAll('.star-btn');
+      stars.forEach((btn, index) => {
+        btn.addEventListener('mouseenter', () => {
+          // If already rated, don't show hover effect
+          if (localStorage.getItem('sms_store_rating_' + billNo)) return;
+          
+          stars.forEach((s, idx) => {
+            const icon = s.querySelector('i');
+            if (idx <= index) {
+              icon.className = 'fa-solid fa-star';
+              s.classList.add('hover-filled');
+            } else {
+              icon.className = 'fa-regular fa-star';
+              s.classList.remove('hover-filled');
+            }
+          });
+        });
+        
+        btn.addEventListener('mouseleave', () => {
+          updateStarsState();
+        });
+      });
 
       // Bind modal triggers
       const modal = document.getElementById('bill-modal');
