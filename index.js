@@ -25,6 +25,9 @@ app.use((req, res, next) => {
 // Cache Map for uploaded bill images (in-memory)
 const billImagesCache = new Map();
 
+// Cache Map for uploaded bill JSON data (base64 encoded) — used by short URL
+const billDataCache = new Map();
+
 // Ratings Store & Persistent Storage
 let ratingsStore = {};
 const ratingsFilePath = path.join(__dirname, 'ratings.json');
@@ -79,13 +82,26 @@ if (fs.existsSync(localBillingUploads)) {
 
 // REST endpoint to receive bill images from the billing software
 app.post('/api/upload-bill', (req, res) => {
-  const { billNo, imageBase64, isStock } = req.body;
+  const { billNo, imageBase64, isStock, billDataStr } = req.body;
   if (!billNo || !imageBase64) {
     return res.status(400).json({ ok: false, error: 'Missing billNo or imageBase64' });
   }
 
   const key = `${isStock ? 'stock' : 'bill'}-${billNo}`;
   billImagesCache.set(key, imageBase64);
+
+  // Store bill data JSON for short URL reconstruction
+  if (billDataStr) {
+    const dataKey = `${isStock ? 'stock' : 'bill'}-data-${billNo}`;
+    billDataCache.set(dataKey, billDataStr);
+    try {
+      const dataFilename = `billdata-${isStock ? 'stock-' : ''}${billNo}.txt`;
+      fs.writeFileSync(path.join('/tmp', dataFilename), billDataStr, 'utf8');
+      console.log(`[Server] Cached bill data to /tmp/${dataFilename}`);
+    } catch (err) {
+      console.warn('[Server] Failed to write bill data to /tmp:', err.message);
+    }
+  }
 
   // Fallback to write in /tmp directory (shared on warm Vercel lambdas)
   try {
@@ -134,12 +150,35 @@ app.get(['/', '/pay'], (req, res) => {
 
         // ── Short URL support: ?b=BILLNO&am=AMOUNT ──────────────────────────
         // The billing app generates a short link for WhatsApp. When a customer
-        // clicks it, we detect the ?b= param and expand it to the full page.
+        // clicks it, we detect the ?b= param and expand it to the full page,
+        // injecting the stored bill data so View Bill works properly.
         const shortBillNo = req.query.b || '';
         if (shortBillNo && !req.query.tn) {
           // Reconstruct the note from the bill number
           req.query.tn = `Bill No: ${shortBillNo} | SRI MUTHARAMMAN STORE`;
-          req.query.am  = req.query.am || '0.00';
+          req.query.am = req.query.am || '0.00';
+
+          // Inject stored bill data so View Bill modal works
+          if (!req.query.bd) {
+            const regularDataKey = `bill-data-${shortBillNo}`;
+            const stockDataKey = `stock-data-${shortBillNo}`;
+            if (billDataCache.has(regularDataKey)) {
+              req.query.bd = billDataCache.get(regularDataKey);
+            } else if (billDataCache.has(stockDataKey)) {
+              req.query.bd = billDataCache.get(stockDataKey);
+            } else {
+              // Try /tmp filesystem (persists across warm lambdas)
+              try {
+                const tmpRegular = path.join('/tmp', `billdata-${shortBillNo}.txt`);
+                const tmpStock = path.join('/tmp', `billdata-stock-${shortBillNo}.txt`);
+                if (fs.existsSync(tmpRegular)) {
+                  req.query.bd = fs.readFileSync(tmpRegular, 'utf8');
+                } else if (fs.existsSync(tmpStock)) {
+                  req.query.bd = fs.readFileSync(tmpStock, 'utf8');
+                }
+              } catch (e) { /* silent */ }
+            }
+          }
         }
         // ─────────────────────────────────────────────────────────────────────
 
