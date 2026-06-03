@@ -1036,13 +1036,20 @@ app.get(['/', '/pay'], (req, res) => {
       transform: translateY(0);
     }
 
-    .modal-close {
+    .modal-actions-container {
       position: absolute;
       top: 1rem;
       right: 1.25rem;
-      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      z-index: 10;
+    }
+
+    .modal-close {
+      background: rgba(239, 68, 68, 0.1);
       border: none;
-      color: var(--text-muted);
+      color: #ef4444;
       font-size: 1.5rem;
       cursor: pointer;
       width: 32px;
@@ -1055,8 +1062,8 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .modal-close:hover {
-      background: rgba(239, 68, 68, 0.15);
-      color: #ef4444;
+      background: rgba(239, 68, 68, 0.2);
+      transform: scale(1.05);
     }
 
     .modal-title {
@@ -1070,9 +1077,9 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .download-modal-btn {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(59, 130, 246, 0.1);
       border: none;
-      color: var(--text-muted);
+      color: #3b82f6;
       font-size: 1rem;
       cursor: pointer;
       width: 32px;
@@ -1082,13 +1089,11 @@ app.get(['/', '/pay'], (req, res) => {
       align-items: center;
       justify-content: center;
       transition: all 0.2s ease;
-      margin-left: auto;
-      margin-right: 2.25rem;
     }
 
     .download-modal-btn:hover {
-      background: rgba(59, 130, 246, 0.15);
-      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.2);
+      transform: scale(1.05);
     }
 
     .modal-body {
@@ -1587,12 +1592,14 @@ app.get(['/', '/pay'], (req, res) => {
   <!-- Bill Receipt Modal -->
   <div id="bill-modal" class="modal-overlay">
     <div class="modal-content">
-      <button class="modal-close" onclick="closeBillModal()">&times;</button>
-      <h3 class="modal-title" style="display: flex; align-items: center; width: 100%;">
-        <i class="fa-solid fa-receipt"></i> <span>Bill Receipt</span>
+      <div class="modal-actions-container">
+        <button class="modal-close" onclick="closeBillModal()" title="Close Receipt">&times;</button>
         <button class="download-modal-btn" onclick="downloadBillReceipt()" title="Download Receipt">
           <i class="fa-solid fa-download"></i>
         </button>
+      </div>
+      <h3 class="modal-title">
+        <i class="fa-solid fa-receipt"></i> <span>Bill Receipt</span>
       </h3>
       <div class="modal-body">
         <div id="modal-text-receipt" style="display: none; padding: 0.25rem 0;"></div>
@@ -1876,49 +1883,59 @@ app.get(['/', '/pay'], (req, res) => {
 
       var totalSection = '';
       if (data.isStock) {
+        var stockSubtotal = data.s !== undefined && data.s !== null && !isNaN(Number(data.s)) ? Number(data.s) : 0;
+        var stockBal = data.bal !== undefined && data.bal !== null && !isNaN(Number(data.bal)) ? Number(data.bal) : 0;
+        var stockGt = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : (stockSubtotal + stockBal);
         totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
           '<span>Cart Total</span>' +
-          '<span>' + Number(data.s).toFixed(2) + '</span>' +
+          '<span>' + stockSubtotal.toFixed(2) + '</span>' +
           '</div>';
-        if (data.bal) {
+        if (stockBal) {
           totalSection += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
             '<span>Previous Balance</span>' +
-            '<span>' + Number(data.bal).toFixed(2) + '</span>' +
+            '<span>' + stockBal.toFixed(2) + '</span>' +
             '</div>';
         }
         totalSection += '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
           '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
           '<span>GRAND TOTAL</span>' +
-          '<span>\u20B9 ' + Number(data.gt).toFixed(2) + '</span>' +
+          '<span>\u20B9 ' + stockGt.toFixed(2) + '</span>' +
           '</div>';
       } else if (data.isCalc) {
+        var calcGt = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : 0;
         totalSection = '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
           '<span>TOTAL AMOUNT</span>' +
-          '<span>\u20B9 ' + Number(data.gt).toFixed(2) + '</span>' +
+          '<span>\u20B9 ' + calcGt.toFixed(2) + '</span>' +
           '</div>';
       } else {
+        var subtotalVal = data.s !== undefined && data.s !== null && !isNaN(Number(data.s)) ? Number(data.s) : 0;
+        var cgstVal = data.cg !== undefined && data.cg !== null && !isNaN(Number(data.cg)) ? Number(data.cg) : (subtotalVal * 0.025);
+        var sgstVal = data.sg !== undefined && data.sg !== null && !isNaN(Number(data.sg)) ? Number(data.sg) : (subtotalVal * 0.025);
+        var discountVal = data.di !== undefined && data.di !== null && !isNaN(Number(data.di)) ? Number(data.di) : 0;
+        var grandTotalVal = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : (subtotalVal + cgstVal + sgstVal - discountVal);
+
         totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
           '<span>Subtotal (Excl. GST)</span>' +
-          '<span>' + Number(data.s).toFixed(2) + '</span>' +
+          '<span>' + subtotalVal.toFixed(2) + '</span>' +
           '</div>' +
           '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
           '<span>CGST (2.5%)</span>' +
-          '<span>' + Number(data.cg).toFixed(2) + '</span>' +
+          '<span>' + cgstVal.toFixed(2) + '</span>' +
           '</div>' +
           '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
           '<span>SGST (2.5%)</span>' +
-          '<span>' + Number(data.sg).toFixed(2) + '</span>' +
+          '<span>' + sgstVal.toFixed(2) + '</span>' +
           '</div>';
-        if (data.di) {
+        if (discountVal > 0) {
           totalSection += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
             '<span>Discount</span>' +
-            '<span>-' + Number(data.di).toFixed(2) + '</span>' +
+            '<span>-' + discountVal.toFixed(2) + '</span>' +
             '</div>';
         }
         totalSection += '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
           '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
           '<span>GRAND TOTAL</span>' +
-          '<span>\u20B9 ' + Number(data.gt).toFixed(2) + '</span>' +
+          '<span>\u20B9 ' + grandTotalVal.toFixed(2) + '</span>' +
           '</div>';
       }
 
