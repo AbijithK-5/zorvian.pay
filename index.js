@@ -397,6 +397,7 @@ app.get(['/', '/pay'], (req, res) => {
       color: var(--text-muted);
       line-height: 1.6;
       font-weight: 400;
+      text-indent: 1.5rem;
     }
 
     .about-text strong {
@@ -1161,10 +1162,16 @@ app.get(['/', '/pay'], (req, res) => {
         <div class="info-section reveal-on-scroll">
           <h2 class="section-title"><i class="fa-solid fa-store icon-gold"></i> About Our Store</h2>
           <p class="about-text">
-            Established in 2019, <strong>Sri Mutharamman Store</strong>, owned by <strong>M. Saminathan</strong>, is your trusted neighborhood grocery and department store, committed to providing quality products at fair and honest prices. We offer a wide range of groceries, daily essentials, rice varieties, household items, stationery products, snacks, cool drinks, fresh vegetables, fresh fruits, beverages, and many other products to meet the everyday needs of our customers.
+            Established in 2019, <strong>Sri Mutharamman Store</strong>, owned by <strong>M. Saminathan</strong>, is your trusted neighborhood grocery and department store, committed to providing quality products at fair and honest prices.
           </p>
           <p class="about-text" style="margin-top: 0.65rem;">
-            Our goal is to deliver excellent service, quality products, and a pleasant shopping experience for every customer. We are dedicated to maintaining high standards of hygiene, customer satisfaction, and value for money. At <strong>Sri Mutharamman Store</strong>, we believe in building lasting relationships with our customers through trust, quality, and reliable service.
+            We offer a wide range of groceries, daily essentials, rice varieties, household items, stationery products, snacks, cool drinks, fresh vegetables, fresh fruits, beverages, and many other products to meet the everyday needs of our customers.
+          </p>
+          <p class="about-text" style="margin-top: 0.65rem;">
+            Our goal is to deliver excellent service, quality products, and a pleasant shopping experience for every customer. We are dedicated to maintaining high standards of hygiene, customer satisfaction, and value for money.
+          </p>
+          <p class="about-text" style="margin-top: 0.65rem;">
+            At <strong>Sri Mutharamman Store</strong>, we believe in building lasting relationships with our customers through trust, quality, and reliable service.
           </p>
         </div>
 
