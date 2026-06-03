@@ -216,6 +216,7 @@ app.get(['/', '/pay'], (req, res) => {
   <title>Sri Mutharamman Store - Checkout</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     :root {
       --bg: #0b0f19;
@@ -732,7 +733,7 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .grand-total-amount-simple {
-      color: var(--primary);
+      color: #ffffff;
       font-weight: 800;
       font-size: 1.25rem;
       margin-left: 0.35rem;
@@ -955,14 +956,14 @@ app.get(['/', '/pay'], (req, res) => {
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      width: 70%;
+      width: fit-content;
       margin: 0 auto 1.25rem auto;
-      background-color: rgba(250, 204, 21, 0.1);
-      color: var(--primary);
-      border: 1px solid rgba(250, 204, 21, 0.25);
-      font-size: 0.95rem;
+      background-color: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      font-size: 0.88rem;
       font-weight: 800;
-      padding: 0.75rem 1rem;
+      padding: 0.6rem 1.25rem;
       border-radius: 16px;
       cursor: pointer;
       transition: all 0.25s ease;
@@ -970,8 +971,8 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .view-bill-btn:hover {
-      background-color: rgba(250, 204, 21, 0.18);
-      border-color: rgba(250, 204, 21, 0.4);
+      background-color: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.45);
       transform: translateY(-1px);
     }
 
@@ -1051,6 +1052,28 @@ app.get(['/', '/pay'], (req, res) => {
       display: flex;
       align-items: center;
       gap: 0.5rem;
+    }
+
+    .download-modal-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      color: var(--text-muted);
+      font-size: 1rem;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      margin-left: auto;
+      margin-right: 2.25rem;
+    }
+
+    .download-modal-btn:hover {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
     }
 
     .modal-body {
@@ -1209,6 +1232,7 @@ app.get(['/', '/pay'], (req, res) => {
       width: 100%;
       height: 100%;
       position: relative;
+      cursor: pointer;
     }
 
     .gallery-slide {
@@ -1359,18 +1383,13 @@ app.get(['/', '/pay'], (req, res) => {
               <img src="/public/5.jpeg" alt="Store Image 5">
             </div>
           </div>
-          <button class="carousel-nav prev" id="carousel-prev" aria-label="Previous image">
-            <i class="fa-solid fa-chevron-left"></i>
-          </button>
-          <button class="carousel-nav next" id="carousel-next" aria-label="Next image">
-            <i class="fa-solid fa-chevron-right"></i>
         </div>
 
         <!-- About Section -->
         <div class="info-section reveal-on-scroll">
           <h2 class="section-title"><i class="fa-solid fa-store icon-gold"></i> About Our Store</h2>
           <p class="about-text first-para">
-            Established in 2019, <strong>Sri Mutharamman Store</strong>,<br/>owned by <strong>M. Saminathan</strong>, is your trusted neighborhood grocery and department store, committed to providing quality products at fair and honest prices.
+            Established in 2019, <strong>Sri Mutharamman Store</strong>, owned by <strong>M. Saminathan</strong>, is your trusted neighborhood grocery and department store, committed to providing quality products at fair and honest prices.
           </p>
           <p class="about-text" style="margin-top: 0.65rem;">
             We offer a wide range of groceries, daily essentials, rice varieties, household items, stationery products, snacks, cool drinks, fresh vegetables, fresh fruits, beverages, and many other products to meet the everyday needs of our customers.
@@ -1553,7 +1572,12 @@ app.get(['/', '/pay'], (req, res) => {
   <div id="bill-modal" class="modal-overlay">
     <div class="modal-content">
       <button class="modal-close" onclick="closeBillModal()">&times;</button>
-      <h3 class="modal-title"><i class="fa-solid fa-receipt"></i> Bill Receipt</h3>
+      <h3 class="modal-title" style="display: flex; align-items: center; width: 100%;">
+        <i class="fa-solid fa-receipt"></i> <span>Bill Receipt</span>
+        <button class="download-modal-btn" onclick="downloadBillReceipt()" title="Download Receipt">
+          <i class="fa-solid fa-download"></i>
+        </button>
+      </h3>
       <div class="modal-body">
         <div id="modal-text-receipt" style="display: none; padding: 0.25rem 0;"></div>
         <div id="modal-loading" style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
@@ -1760,8 +1784,7 @@ app.get(['/', '/pay'], (req, res) => {
       if (!container) return;
       
       const slides = container.querySelectorAll('.gallery-slide');
-      const prevBtn = document.getElementById('carousel-prev');
-      const nextBtn = document.getElementById('carousel-next');
+      const slider = container.querySelector('.gallery-slider');
       
       if (slides.length === 0) return;
       
@@ -1793,17 +1816,9 @@ app.get(['/', '/pay'], (req, res) => {
         }
       }
       
-      // Control bindings
-      if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-          stopAutoplay();
-          showSlide(currentIndex - 1);
-          startAutoplay();
-        });
-      }
-      
-      if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
+      // Control bindings - click slider to show next image
+      if (slider) {
+        slider.addEventListener('click', () => {
           stopAutoplay();
           showSlide(currentIndex + 1);
           startAutoplay();
@@ -1964,6 +1979,90 @@ app.get(['/', '/pay'], (req, res) => {
       const modal = document.getElementById('bill-modal');
       if (modal) {
         modal.classList.remove('show');
+      }
+    }
+
+    function downloadBillReceipt() {
+      const textContainer = document.getElementById('modal-text-receipt');
+      const img = document.getElementById('modal-bill-img');
+      const downloadBtn = document.querySelector('.download-modal-btn');
+      
+      const fileName = 'bill-receipt-' + billNo + '.png';
+      
+      if (textContainer && textContainer.style.display !== 'none') {
+        const oldContent = downloadBtn.innerHTML;
+        downloadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        downloadBtn.disabled = true;
+        
+        html2canvas(textContainer, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: null
+        }).then(canvas => {
+          const link = document.createElement('a');
+          link.download = fileName;
+          link.href = canvas.toDataURL('image/png');
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          downloadBtn.innerHTML = oldContent;
+          downloadBtn.disabled = false;
+          showToast("Bill receipt downloaded!");
+        }).catch(err => {
+          console.error("html2canvas error:", err);
+          downloadBtn.innerHTML = oldContent;
+          downloadBtn.disabled = false;
+          showToast("Failed to render and download bill.");
+        });
+      } else if (img && img.style.display !== 'none' && img.src) {
+        const src = img.src;
+        if (src.startsWith('data:')) {
+          const link = document.createElement('a');
+          link.download = fileName;
+          link.href = src;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showToast("Bill receipt downloaded!");
+        } else {
+          const oldContent = downloadBtn.innerHTML;
+          downloadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+          downloadBtn.disabled = true;
+          
+          fetch(src)
+            .then(response => response.blob())
+            .then(blob => {
+              const blobUrl = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.download = fileName;
+              link.href = blobUrl;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(blobUrl);
+              
+              downloadBtn.innerHTML = oldContent;
+              downloadBtn.disabled = false;
+              showToast("Bill receipt downloaded!");
+            })
+            .catch(err => {
+              console.error("Fetch image error:", err);
+              const link = document.createElement('a');
+              link.download = fileName;
+              link.href = src;
+              link.target = '_blank';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              
+              downloadBtn.innerHTML = oldContent;
+              downloadBtn.disabled = false;
+              showToast("Bill receipt download triggered!");
+            });
+        }
+      } else {
+        showToast("No receipt available to download.");
       }
     }
 
