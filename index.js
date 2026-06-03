@@ -1593,10 +1593,10 @@ app.get(['/', '/pay'], (req, res) => {
   <div id="bill-modal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-actions-container">
-        <button class="modal-close" onclick="closeBillModal()" title="Close Receipt">&times;</button>
         <button class="download-modal-btn" onclick="downloadBillReceipt()" title="Download Receipt">
           <i class="fa-solid fa-download"></i>
         </button>
+        <button class="modal-close" onclick="closeBillModal()" title="Close Receipt">&times;</button>
       </div>
       <h3 class="modal-title">
         <i class="fa-solid fa-receipt"></i> <span>Bill Receipt</span>
