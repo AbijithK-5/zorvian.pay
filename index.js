@@ -1891,6 +1891,11 @@ app.get(['/', '/pay'], (req, res) => {
           '<span>GRAND TOTAL</span>' +
           '<span>\u20B9 ' + Number(data.gt).toFixed(2) + '</span>' +
           '</div>';
+      } else if (data.isCalc) {
+        totalSection = '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
+          '<span>TOTAL AMOUNT</span>' +
+          '<span>\u20B9 ' + Number(data.gt).toFixed(2) + '</span>' +
+          '</div>';
       } else {
         totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
           '<span>Subtotal (Excl. GST)</span>' +
