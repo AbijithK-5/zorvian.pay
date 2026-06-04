@@ -403,8 +403,6 @@ app.get(['/', '/pay'], (req, res) => {
           animation-timeline: view();
           animation-range: entry 5% cover 25%;
           transition: none !important;
-          opacity: 1 !important;
-          transform: none !important;
         }
         
         @keyframes revealOnScroll {
@@ -712,10 +710,7 @@ app.get(['/', '/pay'], (req, res) => {
       transition: all 0.2s;
     }
 
-    .address-box:hover .copy-badge {
-      background: rgba(250, 204, 21, 0.12);
-      color: var(--primary);
-    }
+
 
     .address-body {
       font-size: 0.86rem;
@@ -1310,14 +1305,22 @@ app.get(['/', '/pay'], (req, res) => {
       transform: rotateY(180deg);
     }
 
+    .logo-swap-container.dashboard-logo,
+    .logo-swap-container.dashboard-logo .logo-swap-inner,
+    .logo-swap-container.dashboard-logo .logo-swap-image {
+      border-radius: 50% !important;
+    }
     .dashboard-logo .logo-swap-image {
-      border-radius: 50%;
       border: 3px solid var(--primary);
       box-shadow: 0 8px 20px rgba(250, 204, 21, 0.2);
     }
     
+    .logo-swap-container.checkout-logo,
+    .logo-swap-container.checkout-logo .logo-swap-inner,
+    .logo-swap-container.checkout-logo .logo-swap-image {
+      border-radius: 50% !important;
+    }
     .checkout-logo .logo-swap-image {
-      border-radius: 50%;
       border: 4px solid var(--primary);
       box-shadow: 0 0 25px rgba(250, 204, 21, 0.2);
     }
