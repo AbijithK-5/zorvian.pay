@@ -1662,13 +1662,13 @@ app.get(['/', '/pay'], (req, res) => {
   <div id="bill-modal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-actions-container">
-        <button class="download-modal-btn" onclick="downloadBillReceipt()" title="Download Receipt">
-          <i class="fa-solid fa-download"></i>
-        </button>
         <button class="modal-close" onclick="closeBillModal()" title="Close Receipt">&times;</button>
       </div>
       <h3 class="modal-title">
         <i class="fa-solid fa-receipt"></i> <span>Bill Receipt</span>
+        <button class="download-modal-btn" onclick="downloadBillReceipt()" title="Download Receipt" style="margin-left: 0.25rem;">
+          <i class="fa-solid fa-download"></i>
+        </button>
       </h3>
       <div class="modal-body">
         <div id="modal-text-receipt" style="display: none; padding: 0.25rem 0;"></div>
@@ -1938,97 +1938,163 @@ app.get(['/', '/pay'], (req, res) => {
 
     function renderTextReceipt(data) {
       var itemsHtml = '';
-      if (data.i && data.i.length > 0) {
-        for (var i = 0; i < data.i.length; i++) {
-          var item = data.i[i];
-          itemsHtml += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; font-weight: 500; color: #000;">' +
-            '<div style="flex: 2.0; text-align: left; padding-right: 4px; word-break: break-word;">' + item.n + '</div>' +
-            '<div style="flex: 0.6; text-align: right; padding-right: 8px;">' + Number(item.r).toFixed(2) + '</div>' +
-            '<div style="flex: 0.8; text-align: right; padding-right: 8px;">' + item.q + '</div>' +
-            '<div style="flex: 1; text-align: right;">' + Number(item.a).toFixed(2) + '</div>' +
-            '</div>';
-        }
-      }
-
+      var headersHtml = '';
       var totalSection = '';
-      if (data.isStock) {
-        var stockSubtotal = data.s !== undefined && data.s !== null && !isNaN(Number(data.s)) ? Number(data.s) : 0;
-        var stockBal = data.bal !== undefined && data.bal !== null && !isNaN(Number(data.bal)) ? Number(data.bal) : 0;
-        var stockGt = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : (stockSubtotal + stockBal);
-        
-        var unpaidVal = data.unpaid !== undefined && data.unpaid !== null && !isNaN(Number(data.unpaid)) ? Number(data.unpaid) : 0;
-        var paidVal = data.paid !== undefined && data.paid !== null && !isNaN(Number(data.paid)) ? Number(data.paid) : 0;
+      var customerMob = data.m || '-';
+      var metadataTable = '';
 
-        if (unpaidVal > 0 || paidVal > 0) {
-          totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-            '<span>Unpaid Amount</span>' +
-            '<span>' + unpaidVal.toFixed(2) + '</span>' +
-            '</div>' +
-            '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-            '<span>Paid Amount</span>' +
-            '<span>' + paidVal.toFixed(2) + '</span>' +
-            '</div>' +
-            '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
-            '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
-            '<span>TOTAL BALANCE</span>' +
-            '<span>\u20B9 ' + (unpaidVal - paidVal).toFixed(2) + '</span>' +
+      if (data.isCustomerAccount || data.isSupplierAccount) {
+        // Render Account Statement Ledger
+        if (data.i && data.i.length > 0) {
+          for (var i = 0; i < data.i.length; i++) {
+            var entry = data.i[i];
+            itemsHtml += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; font-weight: 500; color: #000;">' +
+              '<div style="flex: 1.5; text-align: left; word-break: break-word;">' + entry.d + '</div>' +
+              '<div style="flex: 1.5; text-align: left; padding-left: 8px; word-break: break-word;">' + entry.n + '</div>' +
+              '<div style="flex: 1.0; text-align: center;">' +
+              '<span style="background: ' + (entry.s === 'Unpaid' ? '#fee2e2' : '#d1fae5') + '; color: ' + (entry.s === 'Unpaid' ? '#ef4444' : '#10b981') + '; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">' + entry.s + '</span>' +
+              '</div>' +
+              '<div style="flex: 1.2; text-align: right; font-weight: bold;">' + (entry.s === 'Unpaid' ? '+' : '-') + '₹' + Number(entry.a).toFixed(2) + '</div>' +
+              '</div>';
+          }
+        }
+
+        headersHtml = '<div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #000;">' +
+          '<div style="flex: 1.5; text-align: left;">Date</div>' +
+          '<div style="flex: 1.5; text-align: left; padding-left: 8px;">Notes</div>' +
+          '<div style="flex: 1.0; text-align: center;">Status</div>' +
+          '<div style="flex: 1.2; text-align: right;">Amount</div>' +
+          '</div>';
+
+        metadataTable = '<table style="width: 100%; border-collapse: collapse; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 6px 0; font-size: 10px; color: #000;">' +
+          '<tr>' +
+          '<td style="padding: 3px 0; text-align: left;">Generated: ' + data.d + ' ' + data.t + '</td>' +
+          '<td style="padding: 3px 0; text-align: right;">' + (data.isCustomerAccount ? 'Cust ID: ' : 'Supp ID: ') + data.b + '</td>' +
+          '</tr>' +
+          '<tr>' +
+          '<td style="padding: 3px 0; text-align: left;">Name: ' + data.c + '</td>' +
+          '<td style="padding: 3px 0; text-align: right;">Mob: ' + customerMob + '</td>' +
+          '</tr>' +
+          '</table>';
+
+        var outstanding = data.outstanding !== undefined && data.outstanding !== null && !isNaN(Number(data.outstanding)) ? Number(data.outstanding) : 0;
+        totalSection = '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
+          '<span>PENDING TOTAL</span>' +
+          '<span>\u20B9 ' + outstanding.toFixed(2) + '</span>' +
+          '</div>';
+      } else {
+        // Render Standard/Stock/Calc Bills
+        if (data.i && data.i.length > 0) {
+          for (var i = 0; i < data.i.length; i++) {
+            var item = data.i[i];
+            itemsHtml += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; font-weight: 500; color: #000;">' +
+              '<div style="flex: 2.0; text-align: left; padding-right: 4px; word-break: break-word;">' + item.n + '</div>' +
+              '<div style="flex: 0.6; text-align: right; padding-right: 8px;">' + Number(item.r).toFixed(2) + '</div>' +
+              '<div style="flex: 0.8; text-align: right; padding-right: 8px;">' + item.q + '</div>' +
+              '<div style="flex: 1; text-align: right;">' + Number(item.a).toFixed(2) + '</div>' +
+              '</div>';
+          }
+        }
+
+        headersHtml = '<div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #000;">' +
+          '<div style="flex: 2.0; text-align: left;">Items</div>' +
+          '<div style="flex: 0.6; text-align: right; padding-right: 8px;">Rate</div>' +
+          '<div style="flex: 0.8; text-align: right; padding-right: 8px;">Qty</div>' +
+          '<div style="flex: 1; text-align: right;">Amt</div>' +
+          '</div>';
+
+        metadataTable = '<table style="width: 100%; border-collapse: collapse; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 6px 0; font-size: 10px; color: #000;">' +
+          '<tr>' +
+          '<td style="padding: 3px 0; text-align: left;">Date: ' + data.d + '</td>' +
+          '<td style="padding: 3px 0; text-align: right;">Time: ' + data.t + '</td>' +
+          '</tr>' +
+          '<tr>' +
+          '<td style="padding: 3px 0; text-align: left;">Bill No: ' + data.b + '</td>' +
+          '<td style="padding: 3px 0; text-align: right;">Pay: ' + data.p + '</td>' +
+          '</tr>' +
+          '<tr>' +
+          '<td style="padding: 3px 0; text-align: left;">Name: ' + data.c + '</td>' +
+          '<td style="padding: 3px 0; text-align: right;">Mob: ' + customerMob + '</td>' +
+          '</tr>' +
+          '</table>';
+
+        if (data.isStock) {
+          var stockSubtotal = data.s !== undefined && data.s !== null && !isNaN(Number(data.s)) ? Number(data.s) : 0;
+          var stockBal = data.bal !== undefined && data.bal !== null && !isNaN(Number(data.bal)) ? Number(data.bal) : 0;
+          var stockGt = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : (stockSubtotal + stockBal);
+          
+          var unpaidVal = data.unpaid !== undefined && data.unpaid !== null && !isNaN(Number(data.unpaid)) ? Number(data.unpaid) : 0;
+          var paidVal = data.paid !== undefined && data.paid !== null && !isNaN(Number(data.paid)) ? Number(data.paid) : 0;
+
+          if (unpaidVal > 0 || paidVal > 0) {
+            totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+              '<span>Unpaid Amount</span>' +
+              '<span>' + unpaidVal.toFixed(2) + '</span>' +
+              '</div>' +
+              '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+              '<span>Paid Amount</span>' +
+              '<span>' + paidVal.toFixed(2) + '</span>' +
+              '</div>' +
+              '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
+              '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
+              '<span>TOTAL BALANCE</span>' +
+              '<span>\u20B9 ' + (unpaidVal - paidVal).toFixed(2) + '</span>' +
+              '</div>';
+          } else {
+            totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+              '<span>Cart Total</span>' +
+              '<span>' + stockSubtotal.toFixed(2) + '</span>' +
+              '</div>';
+            if (stockBal) {
+              totalSection += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+                '<span>Previous Balance</span>' +
+                '<span>' + stockBal.toFixed(2) + '</span>' +
+                '</div>';
+            }
+            totalSection += '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
+              '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
+              '<span>GRAND TOTAL</span>' +
+              '<span>\u20B9 ' + stockGt.toFixed(2) + '</span>' +
+              '</div>';
+          }
+        } else if (data.isCalc) {
+          var calcGt = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : 0;
+          totalSection = '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
+            '<span>TOTAL AMOUNT</span>' +
+            '<span>\u20B9 ' + calcGt.toFixed(2) + '</span>' +
             '</div>';
         } else {
+          var subtotalVal = data.s !== undefined && data.s !== null && !isNaN(Number(data.s)) ? Number(data.s) : 0;
+          var cgstVal = data.cg !== undefined && data.cg !== null && !isNaN(Number(data.cg)) ? Number(data.cg) : (subtotalVal * 0.025);
+          var sgstVal = data.sg !== undefined && data.sg !== null && !isNaN(Number(data.sg)) ? Number(data.sg) : (subtotalVal * 0.025);
+          var discountVal = data.di !== undefined && data.di !== null && !isNaN(Number(data.di)) ? Number(data.di) : 0;
+          var grandTotalVal = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : (subtotalVal + cgstVal + sgstVal - discountVal);
+
           totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-            '<span>Cart Total</span>' +
-            '<span>' + stockSubtotal.toFixed(2) + '</span>' +
+            '<span>Subtotal (Excl. GST)</span>' +
+            '<span>' + subtotalVal.toFixed(2) + '</span>' +
+            '</div>' +
+            '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+            '<span>CGST (2.5%)</span>' +
+            '<span>' + cgstVal.toFixed(2) + '</span>' +
+            '</div>' +
+            '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+            '<span>SGST (2.5%)</span>' +
+            '<span>' + sgstVal.toFixed(2) + '</span>' +
             '</div>';
-          if (stockBal) {
+          if (discountVal > 0) {
             totalSection += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-              '<span>Previous Balance</span>' +
-              '<span>' + stockBal.toFixed(2) + '</span>' +
+              '<span>Discount</span>' +
+              '<span>-' + discountVal.toFixed(2) + '</span>' +
               '</div>';
           }
           totalSection += '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
             '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
             '<span>GRAND TOTAL</span>' +
-            '<span>\u20B9 ' + stockGt.toFixed(2) + '</span>' +
+            '<span>\u20B9 ' + grandTotalVal.toFixed(2) + '</span>' +
             '</div>';
         }
-      } else if (data.isCalc) {
-        var calcGt = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : 0;
-        totalSection = '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
-          '<span>TOTAL AMOUNT</span>' +
-          '<span>\u20B9 ' + calcGt.toFixed(2) + '</span>' +
-          '</div>';
-      } else {
-        var subtotalVal = data.s !== undefined && data.s !== null && !isNaN(Number(data.s)) ? Number(data.s) : 0;
-        var cgstVal = data.cg !== undefined && data.cg !== null && !isNaN(Number(data.cg)) ? Number(data.cg) : (subtotalVal * 0.025);
-        var sgstVal = data.sg !== undefined && data.sg !== null && !isNaN(Number(data.sg)) ? Number(data.sg) : (subtotalVal * 0.025);
-        var discountVal = data.di !== undefined && data.di !== null && !isNaN(Number(data.di)) ? Number(data.di) : 0;
-        var grandTotalVal = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : (subtotalVal + cgstVal + sgstVal - discountVal);
-
-        totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-          '<span>Subtotal (Excl. GST)</span>' +
-          '<span>' + subtotalVal.toFixed(2) + '</span>' +
-          '</div>' +
-          '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-          '<span>CGST (2.5%)</span>' +
-          '<span>' + cgstVal.toFixed(2) + '</span>' +
-          '</div>' +
-          '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-          '<span>SGST (2.5%)</span>' +
-          '<span>' + sgstVal.toFixed(2) + '</span>' +
-          '</div>';
-        if (discountVal > 0) {
-          totalSection += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-            '<span>Discount</span>' +
-            '<span>-' + discountVal.toFixed(2) + '</span>' +
-            '</div>';
-        }
-        totalSection += '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
-          '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
-          '<span>GRAND TOTAL</span>' +
-          '<span>\u20B9 ' + grandTotalVal.toFixed(2) + '</span>' +
-          '</div>';
       }
-
-      var customerMob = data.m || '-';
 
       return '<div style="font-family: \\\'Arial\\\', sans-serif; color: #000; background: #fff; padding: 14px; border-radius: 12px; line-height: 1.4; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1;">' +
         '<div style="text-align: center; margin-bottom: 8px;">' +
@@ -2040,26 +2106,8 @@ app.get(['/', '/pay'], (req, res) => {
         'Contact: 9566598832 | GSTIN: 33GGSP55591A1ZY' +
         '</div>' +
         '</div>' +
-        '<table style="width: 100%; border-collapse: collapse; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 6px 0; font-size: 10px; color: #000;">' +
-        '<tr>' +
-        '<td style="padding: 3px 0; text-align: left;">Date: ' + data.d + '</td>' +
-        '<td style="padding: 3px 0; text-align: right;">Time: ' + data.t + '</td>' +
-        '</tr>' +
-        '<tr>' +
-        '<td style="padding: 3px 0; text-align: left;">Bill No: ' + data.b + '</td>' +
-        '<td style="padding: 3px 0; text-align: right;">Pay: ' + data.p + '</td>' +
-        '</tr>' +
-        '<tr>' +
-        '<td style="padding: 3px 0; text-align: left;">Name: ' + data.c + '</td>' +
-        '<td style="padding: 3px 0; text-align: right;">Mob: ' + customerMob + '</td>' +
-        '</tr>' +
-        '</table>' +
-        '<div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #000;">' +
-        '<div style="flex: 2.0; text-align: left;">Items</div>' +
-        '<div style="flex: 0.6; text-align: right; padding-right: 8px;">Rate</div>' +
-        '<div style="flex: 0.8; text-align: right; padding-right: 8px;">Qty</div>' +
-        '<div style="flex: 1; text-align: right;">Amt</div>' +
-        '</div>' +
+        metadataTable +
+        headersHtml +
         '<div style="border-top: 1px dashed #000; margin-bottom: 6px;"></div>' +
         '<div style="max-height: 250px; overflow-y: auto; padding-right: 2px;">' + itemsHtml + '</div>' +
         '<div style="border-top: 1px dashed #000; margin: 6px 0;"></div>' +
@@ -2277,6 +2325,21 @@ app.get(['/', '/pay'], (req, res) => {
       }
       
       const viewBtn = document.getElementById('view-bill-btn');
+      if (viewBtn && parsedBillData) {
+        if (parsedBillData.isCustomerAccount || parsedBillData.isSupplierAccount) {
+          viewBtn.innerHTML = '<i class="fa-solid fa-file-invoice-dollar"></i> VIEW STATEMENT';
+        }
+      }
+      
+      const titleSpan = document.querySelector('#bill-modal .modal-title span');
+      const titleIcon = document.querySelector('#bill-modal .modal-title i');
+      if (parsedBillData && (parsedBillData.isCustomerAccount || parsedBillData.isSupplierAccount)) {
+        if (titleSpan) titleSpan.innerText = 'Account Statement';
+        if (titleIcon) {
+          titleIcon.className = 'fa-solid fa-file-invoice-dollar';
+        }
+      }
+
       if (viewBtn) {
         viewBtn.addEventListener('click', function() {
           let src = '${imageUrl}';
