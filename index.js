@@ -326,7 +326,7 @@ app.get(['/', '/pay'], (req, res) => {
     /* Page container layout */
     .page-container {
       display: flex;
-      flex-direction: row;
+      flex-direction: row-reverse;
       max-width: 1050px;
       width: 100%;
       gap: 2.5rem;
@@ -396,6 +396,30 @@ app.get(['/', '/pay'], (req, res) => {
       transform: translateY(0);
     }
 
+    @supports (animation-timeline: view()) {
+      @media (max-width: 899px) {
+        .reveal-on-scroll {
+          animation: revealOnScroll linear both;
+          animation-timeline: view();
+          animation-range: entry 5% cover 25%;
+          transition: none !important;
+          opacity: 1 !important;
+          transform: none !important;
+        }
+        
+        @keyframes revealOnScroll {
+          from {
+            opacity: 0;
+            transform: translateY(40px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      }
+    }
+
     .store-header-section {
       display: flex;
       align-items: center;
@@ -406,7 +430,7 @@ app.get(['/', '/pay'], (req, res) => {
     .dashboard-logo {
       width: 80px;
       height: 80px;
-      border-radius: 20px;
+      border-radius: 50%;
       object-fit: cover;
       border: 3px solid var(--primary);
       box-shadow: 0 8px 20px rgba(250, 204, 21, 0.2);
@@ -656,13 +680,7 @@ app.get(['/', '/pay'], (req, res) => {
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 16px;
       padding: 0.85rem 1rem;
-      cursor: pointer;
       transition: all 0.2s ease;
-    }
-
-    .address-box:hover {
-      background: rgba(255, 255, 255, 0.03);
-      border-color: rgba(255, 255, 255, 0.1);
     }
 
     .address-header {
@@ -1293,7 +1311,7 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .dashboard-logo .logo-swap-image {
-      border-radius: 20px;
+      border-radius: 50%;
       border: 3px solid var(--primary);
       box-shadow: 0 8px 20px rgba(250, 204, 21, 0.2);
     }
@@ -1563,10 +1581,9 @@ app.get(['/', '/pay'], (req, res) => {
             </a>
           </div>
           
-          <div class="address-box" onclick="copyAddress(this)">
+          <div class="address-box">
             <div class="address-header">
               <span class="address-title"><i class="fa-solid fa-location-dot"></i> Address</span>
-              <span class="copy-badge"><i class="fa-regular fa-copy"></i> Copy</span>
             </div>
             <p class="address-body">No. 7/209, Bannari Amman Nagar, Karattumedu, Coimbatore</p>
           </div>
@@ -1625,9 +1642,11 @@ app.get(['/', '/pay'], (req, res) => {
         </button>
         ` : ''}
 
+        ${shortBillNo ? `
         <div class="grand-total-simple">
           Grand Total: <span class="grand-total-amount-simple">₹${Number(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
+        ` : ''}
 
         <a href="${upiLink}" class="pay-btn">
           PAY NOW
