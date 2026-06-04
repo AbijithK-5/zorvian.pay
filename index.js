@@ -29,9 +29,23 @@ const billImagesCache = new Map();
 const billDataCache = new Map();
 
 // Ratings Store & Persistent Storage
+// Setup dynamic writeable directory (handles Vercel and local Windows environments)
+const getTmpDir = () => {
+  const localTmp = path.join(__dirname, 'tmp');
+  try {
+    if (!fs.existsSync(localTmp)) {
+      fs.mkdirSync(localTmp, { recursive: true });
+    }
+    return localTmp;
+  } catch (e) {
+    return '/tmp';
+  }
+};
+const tmpDir = getTmpDir();
+
 let ratingsStore = {};
 const ratingsFilePath = path.join(__dirname, 'ratings.json');
-const tmpRatingsFilePath = path.join('/tmp', 'ratings.json');
+const tmpRatingsFilePath = path.join(tmpDir, 'ratings.json');
 
 function loadRatings() {
   try {
@@ -69,7 +83,7 @@ function saveRatings() {
 loadRatings();
 
 // Serve temp-uploads for Vercel /tmp directory caching
-app.use('/tmp-uploads', express.static('/tmp'));
+app.use('/tmp-uploads', express.static(tmpDir));
 
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -96,21 +110,21 @@ app.post('/api/upload-bill', (req, res) => {
     billDataCache.set(dataKey, billDataStr);
     try {
       const dataFilename = `billdata-${isStock ? 'stock-' : ''}${billNo}.txt`;
-      fs.writeFileSync(path.join('/tmp', dataFilename), billDataStr, 'utf8');
-      console.log(`[Server] Cached bill data to /tmp/${dataFilename}`);
+      fs.writeFileSync(path.join(tmpDir, dataFilename), billDataStr, 'utf8');
+      console.log(`[Server] Cached bill data to tmpDir/${dataFilename}`);
     } catch (err) {
-      console.warn('[Server] Failed to write bill data to /tmp:', err.message);
+      console.warn('[Server] Failed to write bill data to tmpDir:', err.message);
     }
   }
 
-  // Fallback to write in /tmp directory (shared on warm Vercel lambdas)
+  // Fallback to write in tmpDir directory (shared on warm Vercel lambdas)
   try {
     const base64Data = imageBase64.replace(/^data:image\/png;base64,/, "");
     const filename = `${isStock ? 'stock-cart' : 'bill'}-${billNo}.png`;
-    fs.writeFileSync(path.join('/tmp', filename), base64Data, 'base64');
-    console.log(`[Server] Cached image to /tmp/${filename}`);
+    fs.writeFileSync(path.join(tmpDir, filename), base64Data, 'base64');
+    console.log(`[Server] Cached image to tmpDir/${filename}`);
   } catch (err) {
-    console.warn('[Server] Failed to write to /tmp:', err.message);
+    console.warn('[Server] Failed to write to tmpDir:', err.message);
   }
 
   return res.json({ ok: true, message: 'Image uploaded and cached successfully' });
@@ -172,10 +186,10 @@ app.get(['/', '/pay'], (req, res) => {
             } else if (billDataCache.has(stockDataKey)) {
               billDataParam = billDataCache.get(stockDataKey);
             } else {
-              // Try /tmp filesystem (persists across warm lambdas)
+              // Try tmpDir filesystem (persists across warm lambdas)
               try {
-                const tmpRegular = path.join('/tmp', `billdata-${shortBillNo}.txt`);
-                const tmpStock = path.join('/tmp', `billdata-stock-${shortBillNo}.txt`);
+                const tmpRegular = path.join(tmpDir, `billdata-${shortBillNo}.txt`);
+                const tmpStock = path.join(tmpDir, `billdata-stock-${shortBillNo}.txt`);
                 if (fs.existsSync(tmpRegular)) {
                   billDataParam = fs.readFileSync(tmpRegular, 'utf8');
                 } else if (fs.existsSync(tmpStock)) {
@@ -221,10 +235,10 @@ app.get(['/', '/pay'], (req, res) => {
           } else if (billImagesCache.has(stockKey)) {
             imageUrl = billImagesCache.get(stockKey);
           } 
-          // 2. Check /tmp filesystem
-          else if (fs.existsSync(path.join('/tmp', billFile))) {
+          // 2. Check tmpDir filesystem
+          else if (fs.existsSync(path.join(tmpDir, billFile))) {
             imageUrl = `/tmp-uploads/${billFile}`;
-          } else if (fs.existsSync(path.join('/tmp', stockFile))) {
+          } else if (fs.existsSync(path.join(tmpDir, stockFile))) {
             imageUrl = `/tmp-uploads/${stockFile}`;
           } 
           // 3. Fallback to standard local paths (for local development)
@@ -1941,21 +1955,41 @@ app.get(['/', '/pay'], (req, res) => {
         var stockSubtotal = data.s !== undefined && data.s !== null && !isNaN(Number(data.s)) ? Number(data.s) : 0;
         var stockBal = data.bal !== undefined && data.bal !== null && !isNaN(Number(data.bal)) ? Number(data.bal) : 0;
         var stockGt = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : (stockSubtotal + stockBal);
-        totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-          '<span>Cart Total</span>' +
-          '<span>' + stockSubtotal.toFixed(2) + '</span>' +
-          '</div>';
-        if (stockBal) {
-          totalSection += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-            '<span>Previous Balance</span>' +
-            '<span>' + stockBal.toFixed(2) + '</span>' +
+        
+        var unpaidVal = data.unpaid !== undefined && data.unpaid !== null && !isNaN(Number(data.unpaid)) ? Number(data.unpaid) : 0;
+        var paidVal = data.paid !== undefined && data.paid !== null && !isNaN(Number(data.paid)) ? Number(data.paid) : 0;
+
+        if (unpaidVal > 0 || paidVal > 0) {
+          totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+            '<span>Unpaid Amount</span>' +
+            '<span>' + unpaidVal.toFixed(2) + '</span>' +
+            '</div>' +
+            '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+            '<span>Paid Amount</span>' +
+            '<span>' + paidVal.toFixed(2) + '</span>' +
+            '</div>' +
+            '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
+            '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
+            '<span>TOTAL BALANCE</span>' +
+            '<span>\u20B9 ' + (unpaidVal - paidVal).toFixed(2) + '</span>' +
+            '</div>';
+        } else {
+          totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+            '<span>Cart Total</span>' +
+            '<span>' + stockSubtotal.toFixed(2) + '</span>' +
+            '</div>';
+          if (stockBal) {
+            totalSection += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
+              '<span>Previous Balance</span>' +
+              '<span>' + stockBal.toFixed(2) + '</span>' +
+              '</div>';
+          }
+          totalSection += '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
+            '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
+            '<span>GRAND TOTAL</span>' +
+            '<span>\u20B9 ' + stockGt.toFixed(2) + '</span>' +
             '</div>';
         }
-        totalSection += '<div style="border-top: 1px dashed #000; margin: 5px 0;"></div>' +
-          '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
-          '<span>GRAND TOTAL</span>' +
-          '<span>\u20B9 ' + stockGt.toFixed(2) + '</span>' +
-          '</div>';
       } else if (data.isCalc) {
         var calcGt = data.gt !== undefined && data.gt !== null && !isNaN(Number(data.gt)) ? Number(data.gt) : 0;
         totalSection = '<div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-top: 4px; color: #000;">' +
