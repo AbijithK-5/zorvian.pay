@@ -886,6 +886,7 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     .address-box:hover .copy-badge {
+      opacity: 1;
       background: rgba(250, 204, 21, 0.12);
       color: var(--primary);
     }
@@ -916,7 +917,8 @@ app.get(['/', '/pay'], (req, res) => {
       display: flex;
       align-items: center;
       gap: 0.2rem;
-      transition: all 0.2s;
+      opacity: 0;
+      transition: opacity 0.2s, background 0.2s, color 0.2s;
     }
 
 
