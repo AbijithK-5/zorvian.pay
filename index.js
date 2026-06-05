@@ -152,11 +152,21 @@ app.post('/api/rate-bill', (req, res) => {
   
   saveRatings();
 
-  const average = (ratingsStore[key].sum / ratingsStore[key].count).toFixed(1);
+  // Recalculate overall average and count across all bills
+  let totalSum = 0;
+  let totalCount = 0;
+  for (const k in ratingsStore) {
+    if (ratingsStore.hasOwnProperty(k)) {
+      totalSum += ratingsStore[k].sum || 0;
+      totalCount += ratingsStore[k].count || 0;
+    }
+  }
+  const average = totalCount > 0 ? (totalSum / totalCount).toFixed(1) : '0.0';
+
   return res.json({
     ok: true,
     average: parseFloat(average),
-    count: ratingsStore[key].count
+    count: totalCount
   });
 });
 
@@ -274,11 +284,17 @@ app.get(['/', '/pay'], (req, res) => {
           imageUrl = 'text-receipt.png';
         }
 
-        // Retrieve rating statistics for this bill
-        const ratingKey = billNo || 'general';
-        const ratingInfo = ratingsStore[ratingKey] || { sum: 0, count: 0 };
-        const currentAverage = ratingInfo.count > 0 ? (ratingInfo.sum / ratingInfo.count).toFixed(1) : '0.0';
-        const currentCount = ratingInfo.count;
+        // Retrieve overall rating statistics
+        let totalSum = 0;
+        let totalCount = 0;
+        for (const key in ratingsStore) {
+          if (ratingsStore.hasOwnProperty(key)) {
+            totalSum += ratingsStore[key].sum || 0;
+            totalCount += ratingsStore[key].count || 0;
+          }
+        }
+        const currentAverage = totalCount > 0 ? (totalSum / totalCount).toFixed(1) : '0.0';
+        const currentCount = totalCount;
         
         // HTML Code
         const html = `<!DOCTYPE html>
@@ -1660,7 +1676,7 @@ app.get(['/', '/pay'], (req, res) => {
               </button>
             </div>
             <div id="rating-stats" class="rating-stats">
-              ${currentCount > 0 ? `Rating: ${currentAverage} ★ (${currentCount} rating${currentCount > 1 ? 's' : ''})` : 'No ratings yet for this bill'}
+              ${currentCount > 0 ? `Rating: ${currentAverage} ★ (${currentCount} rating${currentCount > 1 ? 's' : ''})` : 'No ratings yet'}
             </div>
             <div id="rating-feedback" class="rating-feedback"></div>
           </div>
