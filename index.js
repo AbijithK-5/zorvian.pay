@@ -238,22 +238,29 @@ app.post('/api/upload-bill', (req, res) => {
 
 // REST endpoint to save rating for a bill (forwarding to Billing App / Queueing offline)
 app.post('/api/rate-bill', async (req, res) => {
-  const { score } = req.body;
+  const { score, billNo, gmail } = req.body;
   const numericScore = parseInt(score, 10);
   if (!numericScore || numericScore < 1 || numericScore > 5) {
     return res.status(400).json({ ok: false, error: 'Invalid score' });
   }
+
+  const targetBillNo = billNo || 'general';
+  const targetGmail = gmail ? gmail.toLowerCase().trim() : '';
 
   try {
     // Attempt to submit rating to Billing App
     const response = await fetch(`${BILLING_APP_URL}/api/ratings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ score: numericScore })
+      body: JSON.stringify({ score: numericScore, billNo: targetBillNo, gmail: targetGmail })
     });
 
     if (response.ok) {
       const data = await response.json();
+      if (!data.ok) {
+        return res.json({ ok: false, error: data.error });
+      }
+      
       const updatedStats = {
         totalRating: data.totalRating,
         ratingCount: data.ratingCount,
@@ -271,13 +278,29 @@ app.post('/api/rate-bill', async (req, res) => {
   }
 
   // Queue the offline rating
-  queueRating(numericScore);
+  const queue = loadPendingRatings();
+  queue.push({ score: numericScore, billNo: targetBillNo, gmail: targetGmail, timestamp: Date.now() });
+  savePendingRatings(queue);
+  console.log(`[Server] Queued offline rating: ${numericScore} ★. Queue size: ${queue.length}`);
 
-  // Return the last successfully cached ratings
+  // Increment the cache locally so it displays the increased count and updated average immediately
+  const tempTotalRating = (cachedRatings.totalRating || 0) + numericScore;
+  const tempRatingCount = (cachedRatings.ratingCount || 0) + 1;
+  const tempAverageRating = tempRatingCount > 0 ? (tempTotalRating / tempRatingCount).toFixed(1) : '0.0';
+  
+  const tempStats = {
+    totalRating: tempTotalRating,
+    ratingCount: tempRatingCount,
+    averageRating: tempAverageRating
+  };
+  
+  saveCachedRatings(tempStats);
+
+  // Return the updated cache
   return res.json({
     ok: true,
-    average: parseFloat(cachedRatings.averageRating || 0.0),
-    count: cachedRatings.ratingCount || 0,
+    average: parseFloat(tempStats.averageRating),
+    count: tempStats.ratingCount,
     queued: true
   });
 });
@@ -803,6 +826,17 @@ app.get(['/', '/pay'], (req, res) => {
       border-radius: 16px;
       padding: 0.85rem 1rem;
       transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .address-box:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .address-box:hover .copy-badge {
+      background: rgba(250, 204, 21, 0.12);
+      color: var(--primary);
     }
 
     .address-header {
@@ -1339,11 +1373,7 @@ app.get(['/', '/pay'], (req, res) => {
         margin-right: -10px;
         padding: 5px 10px 35px 10px;
         overflow: hidden;
-        transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
-                    margin-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
-                    padding-top 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-                    padding-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-                    opacity 0.4s ease;
+        transition: opacity 0.2s ease;
       }
 
       .checkout-container .card {
@@ -1752,11 +1782,12 @@ app.get(['/', '/pay'], (req, res) => {
             </a>
           </div>
           
-          <div class="address-box">
+          <div class="address-box" onclick="copyAddress(this)">
             <div class="address-header">
               <span class="address-title"><i class="fa-solid fa-location-dot"></i> Address</span>
+              <span class="copy-badge"><i class="fa-regular fa-copy"></i> Copy</span>
             </div>
-            <p class="address-body">No. 7/209, Bannari Amman Nagar, Karattumedu, Coimbatore</p>
+            <p class="address-body">No. 7/209, Bannari Amman Nagar, Karattumedu, Coimbatore - 641035</p>
           </div>
 
           <!-- Interactive Star Rating Widget -->
@@ -1876,6 +1907,21 @@ app.get(['/', '/pay'], (req, res) => {
     </div>
   </div>
 
+  <!-- Gmail Prompt Modal -->
+  <div id="gmail-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 400px; padding: 2rem 1.5rem; border-radius: 24px; text-align: center; background: #1e293b; border: 1px solid var(--border);">
+      <h3 class="modal-title" style="margin-bottom: 0.75rem; font-weight: 800; font-size: 1.25rem; color: #ffffff; justify-content: center; display: flex; gap: 0.5rem; align-items: center;">
+        <i class="fa-solid fa-envelope icon-gold"></i> <span>Verify Gmail</span>
+      </h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.5;">To submit a general rating, please verify your Gmail address. Only one rating per Gmail is counted.</p>
+      <input type="email" id="gmail-input" placeholder="example@gmail.com" style="width: 100%; padding: 0.85rem 1rem; border-radius: 12px; border: 1px solid var(--border); background: rgba(15,23,42,0.4); color: white; font-family: inherit; font-size: 0.95rem; margin-bottom: 1.25rem; outline: none; transition: border-color 0.2s;" />
+      <div style="display: flex; gap: 0.75rem; justify-content: center; width: 100%;">
+        <button onclick="closeGmailModal()" style="flex: 1; padding: 0.75rem; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: white; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">Cancel</button>
+        <button id="gmail-submit-btn" style="flex: 1; padding: 0.75rem; border-radius: 12px; border: none; background: var(--primary); color: #0b0f19; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(250,204,21,0.2);">Submit</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast notification -->
   <div id="toast" class="toast">Address copied!</div>
 
@@ -1945,7 +1991,7 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     function copyAddress(element) {
-      const addressText = "No. 7/209, Bannari Amman Nagar, Karattumedu, Coimbatore";
+      const addressText = "No. 7/209, Bannari Amman Nagar, Karattumedu, Coimbatore - 641035";
       navigator.clipboard.writeText(addressText).then(() => {
         showToast("Address copied to clipboard!");
         if (element) {
@@ -1994,9 +2040,36 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     // Submit rating to local storage and server
+    function openGmailModal(onSubmit) {
+      const modal = document.getElementById('gmail-modal');
+      const input = document.getElementById('gmail-input');
+      const submitBtn = document.getElementById('gmail-submit-btn');
+      if (!modal) return;
+      
+      input.value = '';
+      modal.classList.add('show');
+      
+      submitBtn.onclick = () => {
+        const email = input.value.trim().toLowerCase();
+        const isGmail = /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
+        if (!isGmail) {
+          showToast("Please enter a valid Gmail address (ending in @gmail.com).");
+          return;
+        }
+        localStorage.setItem('sms_user_gmail', email);
+        modal.classList.remove('show');
+        onSubmit(email);
+      };
+    }
+
+    function closeGmailModal() {
+      const modal = document.getElementById('gmail-modal');
+      if (modal) modal.classList.remove('show');
+    }
+
     function submitRating(score) {
       if (localStorage.getItem('sms_store_rating_' + billNo)) {
-        showToast("You have already rated this bill!");
+        showToast(billNo === 'general' ? "You have already rated the store!" : "You have already rated this bill!");
         return;
       }
       
@@ -2004,39 +2077,71 @@ app.get(['/', '/pay'], (req, res) => {
       const stats = document.getElementById('rating-stats');
       
       if (!feedback) return;
-      
-      // Save rating in localStorage bill-wise
-      localStorage.setItem('sms_store_rating_' + billNo, JSON.stringify({ score: score }));
-      
-      // Update visual stars state
-      updateStarsState();
-      
-      // Send to backend API
-      fetch('/api/rate-bill', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          billNo: billNo,
-          score: score
+
+      const proceedWithRatingSubmit = (gmailAddress) => {
+        // Save rating in localStorage bill-wise (or Gmail-wise)
+        localStorage.setItem('sms_store_rating_' + billNo, JSON.stringify({ score: score, gmail: gmailAddress }));
+        
+        // Update visual stars state
+        updateStarsState();
+        
+        // Send to backend API
+        fetch('/api/rate-bill', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            billNo: billNo,
+            score: score,
+            gmail: gmailAddress
+          })
         })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.ok) {
-          if (stats) {
-            stats.innerText = 'Rating: ' + data.average + ' ★ (' + data.count + ' rating' + (data.count > 1 ? 's' : '') + ')';
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok) {
+            if (stats) {
+              stats.innerText = 'Rating: ' + data.average + ' ★ (' + data.count + ' rating' + (data.count > 1 ? 's' : '') + ')';
+            }
+            showToast("Rating recorded successfully!");
+          } else {
+            showToast(data.error || "Failed to record rating.");
+            localStorage.removeItem('sms_store_rating_' + billNo);
+            updateStarsState();
           }
-          showToast("Rating recorded successfully!");
+        })
+        .catch(err => {
+          console.error('Failed to submit rating:', err);
+          showToast("Failed to sync rating with server.");
+          localStorage.removeItem('sms_store_rating_' + billNo);
+          updateStarsState();
+        });
+        
+        let thankYouMsg = "Thank you! We appreciate your feedback.";
+        if (score === 5) thankYouMsg = "We're thrilled you loved your experience! 😍 Thank you!";
+        else if (score === 4) thankYouMsg = "Thank you for the wonderful rating! 😊";
+        else if (score === 3) thankYouMsg = "Thank you! We're glad you had a good experience. 🙂";
+        else thankYouMsg = "Thank you for your honest feedback. We will work to improve! 🙏";
+        
+        feedback.innerText = thankYouMsg;
+        feedback.className = 'rating-feedback show';
+      };
+
+      if (billNo === 'general') {
+        const storedGmail = localStorage.getItem('sms_user_gmail');
+        if (storedGmail) {
+          proceedWithRatingSubmit(storedGmail);
+        } else {
+          openGmailModal((gmail) => {
+            proceedWithRatingSubmit(gmail);
+          });
         }
-      })
-      .catch(err => {
-        console.error('Failed to submit rating:', err);
-        showToast("Failed to sync rating with server.");
-      });
-      
-      let thankYouMsg = "Thank you! We appreciate your feedback.";
+      } else {
+        proceedWithRatingSubmit('');
+      }
+    }
+    
+    let thankYouMsg = "Thank you! We appreciate your feedback.";
       if (score === 5) thankYouMsg = "We're thrilled you loved your experience! 😍 Thank you!";
       else if (score === 4) thankYouMsg = "Thank you for the wonderful rating! 😊";
       else if (score === 3) thankYouMsg = "Thank you! We're glad you had a good experience. 🙂";
@@ -2589,6 +2694,15 @@ app.get(['/', '/pay'], (req, res) => {
         modal.addEventListener('click', function(e) {
           if (e.target === modal) {
             closeBillModal();
+          }
+        });
+      }
+
+      const gModal = document.getElementById('gmail-modal');
+      if (gModal) {
+        gModal.addEventListener('click', function(e) {
+          if (e.target === gModal) {
+            closeGmailModal();
           }
         });
       }
