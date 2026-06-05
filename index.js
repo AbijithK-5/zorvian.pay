@@ -47,44 +47,146 @@ const getTmpDir = () => {
 };
 const tmpDir = getTmpDir();
 
-let ratingsStore = {};
-const ratingsFilePath = path.join(__dirname, 'ratings.json');
-const tmpRatingsFilePath = path.join(tmpDir, 'ratings.json');
+const BILLING_APP_URL = process.env.BILLING_APP_URL || 'http://localhost:5002';
+const cachedRatingsFilePath = path.join(tmpDir, 'cached_ratings.json');
+const pendingRatingsFilePath = path.join(tmpDir, 'pending_ratings.json');
+const localCachedRatingsFilePath = path.join(__dirname, 'cached_ratings.json');
+const localPendingRatingsFilePath = path.join(__dirname, 'pending_ratings.json');
 
-function loadRatings() {
+let cachedRatings = { totalRating: 0, ratingCount: 0, averageRating: 0.0 };
+
+function getCachedRatingsPath() {
   try {
-    if (fs.existsSync(ratingsFilePath)) {
-      ratingsStore = JSON.parse(fs.readFileSync(ratingsFilePath, 'utf8'));
-      console.log('[Server] Loaded ratings from project directory');
-    } else if (fs.existsSync(tmpRatingsFilePath)) {
-      ratingsStore = JSON.parse(fs.readFileSync(tmpRatingsFilePath, 'utf8'));
-      console.log('[Server] Loaded ratings from /tmp');
+    if (fs.existsSync(localCachedRatingsFilePath)) return localCachedRatingsFilePath;
+  } catch (_) {}
+  return cachedRatingsFilePath;
+}
+
+function getPendingRatingsPath() {
+  try {
+    if (fs.existsSync(localPendingRatingsFilePath)) return localPendingRatingsFilePath;
+  } catch (_) {}
+  return pendingRatingsFilePath;
+}
+
+function loadCachedRatings() {
+  const filePath = getCachedRatingsPath();
+  try {
+    if (fs.existsSync(filePath)) {
+      cachedRatings = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      console.log('[Server] Loaded cached ratings from', filePath);
+      return;
     }
   } catch (err) {
-    console.error('[Server] Failed to load ratings:', err.message);
+    console.error('[Server] Failed to load cached ratings:', err.message);
+  }
+  cachedRatings = { totalRating: 0, ratingCount: 0, averageRating: 0.0 };
+}
+
+function saveCachedRatings(data) {
+  cachedRatings = data;
+  const filePath = getCachedRatingsPath();
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[Server] Failed to write cached ratings to', filePath, 'trying fallback:', err.message);
+    const fallbackPath = filePath === cachedRatingsFilePath ? localCachedRatingsFilePath : cachedRatingsFilePath;
+    try {
+      fs.writeFileSync(fallbackPath, JSON.stringify(data, null, 2), 'utf8');
+    } catch (fallbackErr) {
+      console.error('[Server] Failed to write cached ratings to fallback:', fallbackErr.message);
+    }
   }
 }
 
-function saveRatings() {
-  const data = JSON.stringify(ratingsStore, null, 2);
-  fs.writeFile(ratingsFilePath, data, 'utf8', (err) => {
-    if (err) {
-      console.warn('[Server] Failed to write ratings to project directory, trying /tmp:', err.message);
-      fs.writeFile(tmpRatingsFilePath, data, 'utf8', (tmpErr) => {
-        if (tmpErr) {
-          console.error('[Server] Failed to write ratings to /tmp:', tmpErr.message);
-        } else {
-          console.log('[Server] Saved ratings to /tmp');
-        }
-      });
-    } else {
-      console.log('[Server] Saved ratings to project directory');
+function loadPendingRatings() {
+  const filePath = getPendingRatingsPath();
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
     }
-  });
+  } catch (err) {
+    console.error('[Server] Failed to load pending ratings:', err.message);
+  }
+  return [];
 }
 
-// Initial load of ratings
-loadRatings();
+function savePendingRatings(queue) {
+  const filePath = getPendingRatingsPath();
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(queue, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[Server] Failed to write pending ratings to', filePath, 'trying fallback:', err.message);
+    const fallbackPath = filePath === pendingRatingsFilePath ? localPendingRatingsFilePath : pendingRatingsFilePath;
+    try {
+      fs.writeFileSync(fallbackPath, JSON.stringify(queue, null, 2), 'utf8');
+    } catch (fallbackErr) {
+      console.error('[Server] Failed to write pending ratings to fallback:', fallbackErr.message);
+    }
+  }
+}
+
+function queueRating(score) {
+  const queue = loadPendingRatings();
+  queue.push({ score, timestamp: Date.now() });
+  savePendingRatings(queue);
+  console.log(`[Server] Queued offline rating: ${score} ★. Queue size: ${queue.length}`);
+}
+
+let isSyncing = false;
+
+async function syncWithBillingApp() {
+  if (isSyncing) return;
+  isSyncing = true;
+  
+  try {
+    // 1. Process pending ratings if any
+    const pending = loadPendingRatings();
+    if (pending.length > 0) {
+      console.log(`[Server] Attempting to sync ${pending.length} pending offline ratings to Billing App...`);
+      const response = await fetch(`${BILLING_APP_URL}/api/ratings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ratings: pending })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[Server] Successfully synced pending ratings. Cleared offline queue.`);
+        savePendingRatings([]); // clear queue
+        saveCachedRatings({
+          totalRating: data.totalRating,
+          ratingCount: data.ratingCount,
+          averageRating: data.averageRating
+        });
+      } else {
+        console.warn('[Server] Billing App rejected pending ratings batch. Status:', response.status);
+      }
+    }
+    
+    // 2. Query latest ratings to stay in sync
+    const res = await fetch(`${BILLING_APP_URL}/api/ratings`);
+    if (res.ok) {
+      const data = await res.json();
+      saveCachedRatings({
+        totalRating: data.totalRating,
+        ratingCount: data.ratingCount,
+        averageRating: data.averageRating
+      });
+    }
+  } catch (err) {
+    console.log('[Server] Billing App is offline. Sync deferred. Error:', err.message);
+  } finally {
+    isSyncing = false;
+  }
+}
+
+// Initial cache load
+loadCachedRatings();
+// Run initial sync check
+syncWithBillingApp();
+// Periodic check every 30 seconds
+setInterval(syncWithBillingApp, 30000);
 
 // Serve temp-uploads for Vercel /tmp directory caching
 app.use('/tmp-uploads', express.static(tmpDir));
@@ -134,39 +236,49 @@ app.post('/api/upload-bill', (req, res) => {
   return res.json({ ok: true, message: 'Image uploaded and cached successfully' });
 });
 
-// REST endpoint to save rating for a bill (bill sharing wise)
-app.post('/api/rate-bill', (req, res) => {
-  const { billNo, score } = req.body;
+// REST endpoint to save rating for a bill (forwarding to Billing App / Queueing offline)
+app.post('/api/rate-bill', async (req, res) => {
+  const { score } = req.body;
   const numericScore = parseInt(score, 10);
   if (!numericScore || numericScore < 1 || numericScore > 5) {
     return res.status(400).json({ ok: false, error: 'Invalid score' });
   }
 
-  const key = billNo || 'general';
-  if (!ratingsStore[key]) {
-    ratingsStore[key] = { sum: 0, count: 0 };
-  }
-  
-  ratingsStore[key].sum += numericScore;
-  ratingsStore[key].count += 1;
-  
-  saveRatings();
+  try {
+    // Attempt to submit rating to Billing App
+    const response = await fetch(`${BILLING_APP_URL}/api/ratings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ score: numericScore })
+    });
 
-  // Recalculate overall average and count across all bills
-  let totalSum = 0;
-  let totalCount = 0;
-  for (const k in ratingsStore) {
-    if (ratingsStore.hasOwnProperty(k)) {
-      totalSum += ratingsStore[k].sum || 0;
-      totalCount += ratingsStore[k].count || 0;
+    if (response.ok) {
+      const data = await response.json();
+      const updatedStats = {
+        totalRating: data.totalRating,
+        ratingCount: data.ratingCount,
+        averageRating: data.averageRating
+      };
+      saveCachedRatings(updatedStats);
+      return res.json({
+        ok: true,
+        average: parseFloat(updatedStats.averageRating),
+        count: updatedStats.ratingCount
+      });
     }
+  } catch (err) {
+    console.log('[Server] Billing App offline during rating. Queueing in pendingRatings.');
   }
-  const average = totalCount > 0 ? (totalSum / totalCount).toFixed(1) : '0.0';
 
+  // Queue the offline rating
+  queueRating(numericScore);
+
+  // Return the last successfully cached ratings
   return res.json({
     ok: true,
-    average: parseFloat(average),
-    count: totalCount
+    average: parseFloat(cachedRatings.averageRating || 0.0),
+    count: cachedRatings.ratingCount || 0,
+    queued: true
   });
 });
 
@@ -284,17 +396,9 @@ app.get(['/', '/pay'], (req, res) => {
           imageUrl = 'text-receipt.png';
         }
 
-        // Retrieve overall rating statistics
-        let totalSum = 0;
-        let totalCount = 0;
-        for (const key in ratingsStore) {
-          if (ratingsStore.hasOwnProperty(key)) {
-            totalSum += ratingsStore[key].sum || 0;
-            totalCount += ratingsStore[key].count || 0;
-          }
-        }
-        const currentAverage = totalCount > 0 ? (totalSum / totalCount).toFixed(1) : '0.0';
-        const currentCount = totalCount;
+        // Retrieve cached store-wide rating statistics
+        const currentAverage = cachedRatings.averageRating !== undefined ? Number(cachedRatings.averageRating).toFixed(1) : '0.0';
+        const currentCount = cachedRatings.ratingCount || 0;
         
         // HTML Code
         const html = `<!DOCTYPE html>
