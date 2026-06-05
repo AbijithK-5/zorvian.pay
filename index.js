@@ -1524,6 +1524,18 @@ app.get(['/', '/pay'], (req, res) => {
             <div class="gallery-slide">
               <img src="/public/5.jpeg" alt="Store Image 5">
             </div>
+            <div class="gallery-slide">
+              <img src="/public/6.jpeg" alt="Store Image 6">
+            </div>
+            <div class="gallery-slide">
+              <img src="/public/7.jpeg" alt="Store Image 7">
+            </div>
+            <div class="gallery-slide">
+              <img src="/public/8.jpeg" alt="Store Image 8">
+            </div>
+            <div class="gallery-slide">
+              <img src="/public/9.jpeg" alt="Store Image 9">
+            </div>
           </div>
         </div>
 
