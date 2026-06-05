@@ -1158,6 +1158,11 @@ app.get(['/', '/pay'], (req, res) => {
       opacity: 1;
     }
 
+    .toast.error {
+      background: rgba(239, 68, 68, 0.95);
+      box-shadow: 0 10px 25px rgba(239, 68, 68, 0.35);
+    }
+
     /* Interactive Star Rating Widget */
     .rating-widget {
       background: rgba(255, 255, 255, 0.015);
@@ -2034,10 +2039,10 @@ app.get(['/', '/pay'], (req, res) => {
     }
 
     // Toast alert triggers
-    function showToast(message) {
+    function showToast(message, isError) {
       const toast = document.getElementById('toast');
       toast.innerText = message;
-      toast.className = 'toast show';
+      toast.className = 'toast show' + (isError ? ' error' : '');
       setTimeout(() => {
         toast.className = 'toast';
       }, 2500);
@@ -2052,7 +2057,7 @@ app.get(['/', '/pay'], (req, res) => {
           setTimeout(() => { element.style.borderColor = ""; }, 1200);
         }
       }).catch(() => {
-        showToast("Failed to copy address.");
+        showToast("Failed to copy address.", true);
       });
     }
 
@@ -2064,7 +2069,7 @@ app.get(['/', '/pay'], (req, res) => {
           setTimeout(() => { element.style.borderColor = ""; }, 1200);
         }
       }).catch(() => {
-        showToast("Failed to copy " + label + ".");
+        showToast("Failed to copy " + label + ".", true);
       });
     }
 
@@ -2106,7 +2111,7 @@ app.get(['/', '/pay'], (req, res) => {
         const email = input.value.trim().toLowerCase();
         const isGmail = /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
         if (!isGmail) {
-          showToast("Please enter a valid Gmail address (ending in @gmail.com).");
+          showToast("Please enter a valid Gmail address (ending in @gmail.com).", true);
           return;
         }
         localStorage.setItem('sms_user_gmail', email);
@@ -2122,7 +2127,7 @@ app.get(['/', '/pay'], (req, res) => {
 
     function submitRating(score) {
       if (localStorage.getItem('sms_store_rating_' + billNo)) {
-        showToast(billNo === 'general' ? "You have already rated the store!" : "You have already rated this bill!");
+        showToast("You have already rated!", true);
         return;
       }
       
@@ -2158,14 +2163,14 @@ app.get(['/', '/pay'], (req, res) => {
             }
             showToast("Rating recorded successfully!");
           } else {
-            showToast(data.error || "Failed to record rating.");
+            showToast(data.error || "Failed to record rating.", true);
             localStorage.removeItem('sms_store_rating_' + billNo);
             updateStarsState();
           }
         })
         .catch(err => {
           console.error('Failed to submit rating:', err);
-          showToast("Failed to sync rating with server.");
+          showToast("Failed to sync rating with server.", true);
           localStorage.removeItem('sms_store_rating_' + billNo);
           updateStarsState();
         });
@@ -2606,7 +2611,7 @@ app.get(['/', '/pay'], (req, res) => {
           console.error("html2canvas error:", err);
           downloadBtn.innerHTML = oldContent;
           downloadBtn.disabled = false;
-          showToast("Failed to render and download bill.");
+          showToast("Failed to render and download bill.", true);
         });
       } else if (img && img.style.display !== 'none' && img.src) {
         const src = img.src;
@@ -2655,7 +2660,7 @@ app.get(['/', '/pay'], (req, res) => {
             });
         }
       } else {
-        showToast("No receipt available to download.");
+        showToast("No receipt available to download.", true);
       }
     }
 
