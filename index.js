@@ -1036,26 +1036,6 @@ app.get(['/', '/pay'], (req, res) => {
       margin-top: 0.65rem;
     }
 
-    .rating-concept {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.55rem;
-      margin-top: 0.85rem;
-      padding: 0.65rem 0.85rem;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px dashed rgba(255, 255, 255, 0.06);
-      border-radius: 12px;
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      text-align: left;
-      line-height: 1.4;
-    }
-
-    .rating-concept i {
-      margin-top: 0.15rem;
-      font-size: 0.8rem;
-    }
-
     @keyframes pulse {
       0% {
         transform: scale(0.95);
@@ -1683,10 +1663,6 @@ app.get(['/', '/pay'], (req, res) => {
               ${currentCount > 0 ? `Rating: ${currentAverage} ★ (${currentCount} rating${currentCount > 1 ? 's' : ''})` : 'No ratings yet for this bill'}
             </div>
             <div id="rating-feedback" class="rating-feedback"></div>
-            <div class="rating-concept">
-              <i class="fa-solid fa-circle-info icon-gold"></i>
-              <span><strong>Rating Concept:</strong> Stores the total ratings and rating count in a server-side JSON file instead of a database. Each new rating updates the JSON file, recalculates the average, and displays the latest count and average to all users across the website and connected app.</span>
-            </div>
           </div>
 
           <div class="copyright-text">© 2026 SMS. All rights reserved.</div>
