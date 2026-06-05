@@ -2463,7 +2463,7 @@ app.get(['/', '/pay'], (req, res) => {
               '</div>';
           } else {
             totalSection = '<div style="display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; color: #000;">' +
-              '<span>Cart Total</span>' +
+              '<span>Sub Total</span>' +
               '<span>' + stockSubtotal.toFixed(2) + '</span>' +
               '</div>';
             if (stockBal) {
