@@ -2373,7 +2373,6 @@ app.get(['/', '/pay'], (req, res) => {
             var entry = data.i[i];
             itemsHtml += '<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; font-weight: 500; color: #000;">' +
               '<div style="flex: 1.5; text-align: left; word-break: break-word;">' + entry.d + '</div>' +
-              '<div style="flex: 1.5; text-align: left; padding-left: 8px; word-break: break-word;">' + entry.n + '</div>' +
               '<div style="flex: 1.0; text-align: center;">' +
               '<span style="background: ' + (entry.s === 'Unpaid' ? '#fee2e2' : '#d1fae5') + '; color: ' + (entry.s === 'Unpaid' ? '#ef4444' : '#10b981') + '; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: bold;">' + entry.s + '</span>' +
               '</div>' +
@@ -2384,7 +2383,6 @@ app.get(['/', '/pay'], (req, res) => {
 
         headersHtml = '<div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #000;">' +
           '<div style="flex: 1.5; text-align: left;">Date</div>' +
-          '<div style="flex: 1.5; text-align: left; padding-left: 8px;">Notes</div>' +
           '<div style="flex: 1.0; text-align: center;">Status</div>' +
           '<div style="flex: 1.2; text-align: right;">Amount</div>' +
           '</div>';
