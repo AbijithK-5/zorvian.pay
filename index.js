@@ -35,11 +35,18 @@ const billDataCache = new Map();
 // count and average to all users across the website and connected app.
 // Setup dynamic writeable directory (handles Vercel and local Windows environments)
 const getTmpDir = () => {
+  if (process.env.VERCEL) {
+    return '/tmp';
+  }
   const localTmp = path.join(__dirname, 'tmp');
   try {
     if (!fs.existsSync(localTmp)) {
       fs.mkdirSync(localTmp, { recursive: true });
     }
+    // Test write permission
+    const testFile = path.join(localTmp, '.write_test');
+    fs.writeFileSync(testFile, 'test');
+    fs.unlinkSync(testFile);
     return localTmp;
   } catch (e) {
     return '/tmp';
@@ -74,12 +81,31 @@ function loadCachedRatings() {
   try {
     if (fs.existsSync(filePath)) {
       cachedRatings = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      console.log('[Server] Loaded cached ratings from', filePath);
+      console.log('[Server] Loaded cached ratings from writeable path:', filePath);
       return;
     }
   } catch (err) {
-    console.error('[Server] Failed to load cached ratings:', err.message);
+    console.error('[Server] Failed to load cached ratings from writeable path:', err.message);
   }
+
+  // Fallback to load initial values from committed repository file
+  const committedPath = path.join(__dirname, 'tmp', 'cached_ratings.json');
+  try {
+    if (fs.existsSync(committedPath)) {
+      cachedRatings = JSON.parse(fs.readFileSync(committedPath, 'utf8'));
+      console.log('[Server] Loaded initial ratings from committed file:', committedPath);
+      // Try to seed the writeable path so next loads use it
+      try {
+        fs.writeFileSync(filePath, JSON.stringify(cachedRatings, null, 2), 'utf8');
+      } catch (writeErr) {
+        console.warn('[Server] Could not seed writeable path:', writeErr.message);
+      }
+      return;
+    }
+  } catch (err) {
+    console.error('[Server] Failed to load committed cached ratings:', err.message);
+  }
+
   cachedRatings = { totalRating: 0, ratingCount: 0, averageRating: 0.0 };
 }
 
@@ -106,8 +132,24 @@ function loadPendingRatings() {
       return JSON.parse(fs.readFileSync(filePath, 'utf8'));
     }
   } catch (err) {
-    console.error('[Server] Failed to load pending ratings:', err.message);
+    console.error('[Server] Failed to load pending ratings from writeable path:', err.message);
   }
+
+  // Fallback to committed repository file
+  const committedPath = path.join(__dirname, 'tmp', 'pending_ratings.json');
+  try {
+    if (fs.existsSync(committedPath)) {
+      const queue = JSON.parse(fs.readFileSync(committedPath, 'utf8'));
+      // Seed the writeable path
+      try {
+        fs.writeFileSync(filePath, JSON.stringify(queue, null, 2), 'utf8');
+      } catch (writeErr) {}
+      return queue;
+    }
+  } catch (err) {
+    console.error('[Server] Failed to load committed pending ratings:', err.message);
+  }
+
   return [];
 }
 
@@ -183,10 +225,14 @@ async function syncWithBillingApp() {
 
 // Initial cache load
 loadCachedRatings();
-// Run initial sync check
-syncWithBillingApp();
-// Periodic check every 30 seconds
-setInterval(syncWithBillingApp, 30000);
+
+// Only run background interval if not on Vercel
+if (!process.env.VERCEL) {
+  // Run initial sync check
+  syncWithBillingApp();
+  // Periodic check every 30 seconds
+  setInterval(syncWithBillingApp, 30000);
+}
 
 // Serve temp-uploads for Vercel /tmp directory caching
 app.use('/tmp-uploads', express.static(tmpDir));
@@ -306,6 +352,11 @@ app.post('/api/rate-bill', async (req, res) => {
 });
 
 app.get(['/', '/pay'], (req, res) => {
+        // Trigger sync asynchronously in background on page load when running on Vercel
+        if (process.env.VERCEL) {
+          syncWithBillingApp().catch(e => console.warn('[Server] Sync error during page load:', e.message));
+        }
+
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -2140,16 +2191,7 @@ app.get(['/', '/pay'], (req, res) => {
         proceedWithRatingSubmit('');
       }
     }
-    
-    let thankYouMsg = "Thank you! We appreciate your feedback.";
-      if (score === 5) thankYouMsg = "We're thrilled you loved your experience! 😍 Thank you!";
-      else if (score === 4) thankYouMsg = "Thank you for the wonderful rating! 😊";
-      else if (score === 3) thankYouMsg = "Thank you! We're glad you had a good experience. 🙂";
-      else thankYouMsg = "Thank you for your honest feedback. We will work to improve! 🙏";
-      
-      feedback.innerText = thankYouMsg;
-      feedback.className = 'rating-feedback show';
-    }
+
 
     function checkPreviousRating() {
       updateStarsState();
@@ -2752,7 +2794,9 @@ app.get(['/', '/pay'], (req, res) => {
         res.send(html);
       });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+module.exports = app;
