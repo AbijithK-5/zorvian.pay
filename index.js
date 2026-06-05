@@ -1209,7 +1209,39 @@ app.get(['/', '/pay'], (req, res) => {
 
       .checkout-container {
         order: -1;
-        position: static;
+        position: relative;
+        width: calc(100% + 20px);
+        margin-left: -10px;
+        margin-right: -10px;
+        padding: 5px 10px 35px 10px;
+        overflow: hidden;
+        transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                    margin-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                    padding-top 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                    padding-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                    opacity 0.4s ease;
+      }
+
+      .checkout-container .card {
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                    opacity 0.4s ease, 
+                    box-shadow 0.4s ease;
+      }
+
+      /* Active scroll-hide state for mobile */
+      .checkout-container.card-hidden {
+        height: 0 !important;
+        margin-bottom: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .checkout-container.card-hidden .card {
+        transform: translateY(-40px);
+        opacity: 0;
+        box-shadow: none;
       }
 
       .store-dashboard {
@@ -1947,6 +1979,85 @@ app.get(['/', '/pay'], (req, res) => {
       container.addEventListener('mouseleave', startAutoplay);
     }
 
+    // High performance mobile card scroll hide/show logic
+    function initMobileScrollHide() {
+      const checkoutContainer = document.querySelector('.checkout-container');
+      const checkoutCard = checkoutContainer ? checkoutContainer.querySelector('.card') : null;
+      
+      if (!checkoutContainer || !checkoutCard) return;
+      
+      let lastScrollY = window.scrollY;
+      let isHidden = false;
+      let cardHeight = 0;
+      let ticking = false;
+      
+      function updateCardHeight() {
+        if (window.innerWidth <= 899) {
+          // Temporarily remove classes/height to measure natural height
+          const wasHidden = checkoutContainer.classList.contains('card-hidden');
+          if (wasHidden) {
+            checkoutContainer.classList.remove('card-hidden');
+            checkoutContainer.style.height = '';
+          }
+          
+          cardHeight = checkoutCard.offsetHeight;
+          
+          if (wasHidden) {
+            checkoutContainer.classList.add('card-hidden');
+            checkoutContainer.style.height = '0px';
+          } else {
+            checkoutContainer.style.height = (cardHeight + 40) + 'px'; // 40px accounts for padding (5px top + 35px bottom)
+          }
+        } else {
+          checkoutContainer.style.height = '';
+          checkoutContainer.classList.remove('card-hidden');
+        }
+      }
+      
+      // Measure initial height and bind resize
+      updateCardHeight();
+      window.addEventListener('load', updateCardHeight);
+      window.addEventListener('resize', updateCardHeight);
+      
+      // Keep height updated in case the card contents change dynamically
+      const observer = new MutationObserver(updateCardHeight);
+      observer.observe(checkoutCard, { childList: true, subtree: true, attributes: true });
+      
+      window.addEventListener('scroll', function() {
+        if (window.innerWidth > 899) return;
+        
+        if (!ticking) {
+          window.requestAnimationFrame(function() {
+            const currentScrollY = window.scrollY;
+            const scrollDelta = currentScrollY - lastScrollY;
+            
+            // Check scroll direction and threshold
+            // Micro-jitter protection: only triggers if scroll delta is greater than 8px
+            if (Math.abs(scrollDelta) > 8) {
+              if (scrollDelta > 0 && currentScrollY > 120) {
+                // Scrolling down and past threshold -> Hide card
+                if (!isHidden) {
+                  checkoutContainer.classList.add('card-hidden');
+                  checkoutContainer.style.height = '0px';
+                  isHidden = true;
+                }
+              } else if (scrollDelta < 0 || currentScrollY <= 15) {
+                // Scrolling up or reached top -> Show card
+                if (isHidden) {
+                  checkoutContainer.classList.remove('card-hidden');
+                  checkoutContainer.style.height = (cardHeight + 40) + 'px';
+                  isHidden = false;
+                }
+              }
+              lastScrollY = currentScrollY;
+            }
+            ticking = false;
+          });
+          ticking = true;
+        }
+      }, { passive: true });
+    }
+
     // Base64 decoder and text-receipt rendering logic
     let parsedBillData = null;
     if (typeof encodedBillData !== 'undefined' && encodedBillData) {
@@ -2377,6 +2488,9 @@ app.get(['/', '/pay'], (req, res) => {
       
       // Initialize gallery carousel
       initGalleryCarousel();
+
+      // Initialize mobile summary card hide-on-scroll behavior
+      initMobileScrollHide();
     });
 
     // Initial load and run
